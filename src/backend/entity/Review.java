@@ -1,4 +1,4 @@
-package entities;
+package backend.entity;
 
 public class Review {
     
