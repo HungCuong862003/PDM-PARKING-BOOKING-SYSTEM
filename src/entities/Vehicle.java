@@ -1,4 +1,4 @@
-package entity;
+package entities;
 public class Vehicle {
     private String VehicleID;
     private String UserID;

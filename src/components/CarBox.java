@@ -7,7 +7,6 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import model.Model_Box;
 
 public class CarBox extends javax.swing.JPanel {
 

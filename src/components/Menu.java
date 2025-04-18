@@ -2,7 +2,7 @@ package components;
 
 import base_components.CustomScrollBar;
 import base_components.RippleEffectButton;
-import event.MenuEvent;
+import events.MenuEvent;
 import java.awt.Component;
 import java.awt.Image;
 import java.awt.event.ActionEvent;

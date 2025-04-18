@@ -1,6 +1,6 @@
 package main;
 
-import event.MenuEvent;
+import events.MenuEvent;
 import java.awt.Component;
 import javax.swing.JFrame;
 import net.miginfocom.swing.MigLayout;
