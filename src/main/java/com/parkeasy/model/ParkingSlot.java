@@ -4,6 +4,7 @@ public class ParkingSlot {
 
     // primary key
     private int slotID;
+    // other attributes
     private String slotNumber;
     private boolean availability;
     // foreign key
