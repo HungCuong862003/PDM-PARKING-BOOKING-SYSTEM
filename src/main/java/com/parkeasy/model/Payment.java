@@ -11,10 +11,10 @@ public class Payment {
     private Date paymentDate;
     // foreign key
     private int reservationID;
-    private int cardNumber;
+    private String cardNumber;
 
     public Payment(int paymentID, String paymentMethod, float amount, Date paymentDate, int reservationID,
-            int cardNumber) {
+            String cardNumber) {
         this.paymentID = paymentID;
         this.paymentMethod = paymentMethod;
         this.amount = amount;
@@ -63,11 +63,11 @@ public class Payment {
         this.reservationID = reservationID;
     }
 
-    public int getCardNumber() {
+    public String getCardNumber() {
         return cardNumber;
     }
 
-    public void setCardNumber(int cardNumber) {
+    public void setCardNumber(String cardNumber) {
         this.cardNumber = cardNumber;
     }
 }
