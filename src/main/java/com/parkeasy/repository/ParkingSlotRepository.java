@@ -9,7 +9,7 @@ import main.java.com.parkeasy.util.DatabaseConnection;
 
 public class ParkingSlotRepository {
     // insert a new parking slot into the database
-    public void insertParkingSpace(ParkingSlot parkingSlot) {
+    public void insertParkingSlot(ParkingSlot parkingSlot) {
         String sql = "INSERT INTO parkingSlot (SlotID, SlotNumber, Availability, ParkingID) VALUES (?, ?, ?, ?)";
         try (Connection connection = DatabaseConnection.getConnection();
                 PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
