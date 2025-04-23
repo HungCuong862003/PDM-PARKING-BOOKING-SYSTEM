@@ -3,15 +3,26 @@ package main.java.com.parkeasy.util;
 import java.sql.*;
 
 public class DatabaseConnection {
-    private static final String URL = "jdbc:mysql://127.0.0.1:3306/test"; // TODO: change to your database name
-    private static final String USERNAME = "root"; // TODO: change to your database username
-    private static final String PASSWORD = "password"; // TODO: change to your database password
+
     private static Connection connection;
     private static Statement statement;
     private static ResultSet resultSet;
     private static PreparedStatement preparedStatement;
+    private static final String URL = Constants.URL;
+    private static final String USERNAME = Constants.USERNAME;
+    private static final String PASSWORD = Constants.PASSWORD;
+
+    private static DatabaseConnection instance = null;
+
     // query
-    private static String query = "SELECT * FROM admin";
+    private static String query = "SELECT * FROM parkingspace";
+
+    public static DatabaseConnection getInstance() {
+        if (instance == null) {
+            instance = new DatabaseConnection();
+        }
+        return instance;
+    }
 
     public static void closeConnection(Connection connection) {
         if (connection != null) {
@@ -116,40 +127,30 @@ public class DatabaseConnection {
         closeResultSet(resultSet);
     }
 
+    // use to test connection
     public static void showQuery(String query) {
         try {
             ResultSet rs = getResultSet(query);
-            while (rs.isBeforeFirst()) {
-                rs.next();
-                int adminID = rs.getInt("adminID");
-                String adminName = rs.getString("adminName");
-                String phone = rs.getString("Phone");
-                String email = rs.getString("Email");
-                String password = rs.getString("Password");
-                // Print the results
-                System.out.println("admin ID: " + adminID);
-                System.out.println("admin Name: " + adminName);
-                System.out.println("Phone Number: " + phone);
-                System.out.println("Email: " + email);
-                System.out.println("Password: " + password);
+            while (rs.next()) {
+                String ParkingID = rs.getString("ParkingID");
+                String ParkingAddress = rs.getString("ParkingAddress");
+                float CostOfParking = rs.getFloat("CostOfParking");
+                int NumberOfSlots = rs.getInt("NumberOfSlots");
+                int MaxDuration = rs.getInt("MaxDuration");
+                String Description = rs.getString("Description");
+                int AdminID = rs.getInt("AdminID");
+
+                // print
+                System.out.println("ParkingID: " + ParkingID);
+                System.out.println("ParkingAddress: " + ParkingAddress);
+                System.out.println("CostOfParking: " + CostOfParking);
+                System.out.println("NumberOfSlots: " + NumberOfSlots);
+                System.out.println("MaxDuration: " + MaxDuration);
+                System.out.println("Description: " + Description);
+                System.out.println("AdminID: " + AdminID);
             }
         } catch (SQLException e) {
             System.err.println("Error executing query: " + e.getMessage());
         }
-    }
-
-    public static void main(String[] args) {
-        // Test the database connection
-        Connection conn = DatabaseConnection.getConnection();
-        if (conn != null) {
-            System.out.println("Database connection established successfully.");
-        } else {
-            System.out.println("Failed to establish database connection.");
-        }
-
-        // test get info in database
-        showQuery(query);
-
-        DatabaseConnection.closeAll();
     }
 }

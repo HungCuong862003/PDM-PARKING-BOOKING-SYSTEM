@@ -120,4 +120,37 @@ public class AdminRepository {
         }
         return null;
     }
+
+    public Admin getAdminById(int adminID) {
+        databaseConnection = DatabaseConnection.getConnection();
+        sql = "SELECT * FROM admin WHERE adminID = ?";
+        try {
+            preparedStatement = databaseConnection.prepareStatement(sql);
+            preparedStatement.setInt(1, adminID);
+            resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                Admin admin = new Admin();
+                admin.setAdminID(resultSet.getInt("adminID"));
+                admin.setAdminName(resultSet.getString("adminName"));
+                admin.setPhone(resultSet.getString("phone"));
+                admin.setEmail(resultSet.getString("email"));
+                admin.setPassword(resultSet.getString("password"));
+                return admin;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            DatabaseConnection.closePreparedStatement(preparedStatement);
+            DatabaseConnection.closeConnection(databaseConnection);
+        }
+        return null;
+    }
+
+    // test
+    public static void main(String[] args) {
+        AdminRepository adminRepository = new AdminRepository();
+        Admin admin = new Admin(1, "John Doe", "1234567890", "asdf@fas.ac", "password123");
+
+        adminRepository.save(admin);
+    }
 }

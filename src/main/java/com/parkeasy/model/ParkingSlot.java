@@ -17,6 +17,10 @@ public class ParkingSlot {
         this.parkingID = parkingID;
     }
 
+    public ParkingSlot() {
+        // Default constructor
+    }
+
     public int getSlotID() {
         return slotID;
     }
