@@ -1,6 +1,6 @@
 package main.java.com.parkeasy.model;
 
-import java.sql.Date;
+import java.sql.Timestamp;
 
 public class Payment {
     // primary key
@@ -8,12 +8,12 @@ public class Payment {
     // other attributes
     private String paymentMethod;
     private float amount;
-    private Date paymentDate;
+    private Timestamp paymentDate;
     // foreign key
     private int reservationID;
     private String cardNumber;
 
-    public Payment(int paymentID, String paymentMethod, float amount, Date paymentDate, int reservationID,
+    public Payment(int paymentID, String paymentMethod, float amount, Timestamp paymentDate, int reservationID,
             String cardNumber) {
         this.paymentID = paymentID;
         this.paymentMethod = paymentMethod;
@@ -47,11 +47,11 @@ public class Payment {
         this.amount = amount;
     }
 
-    public Date getPaymentDate() {
+    public Timestamp getPaymentDate() {
         return paymentDate;
     }
 
-    public void setPaymentDate(Date paymentDate) {
+    public void setPaymentDate(Timestamp paymentDate) {
         this.paymentDate = paymentDate;
     }
 
