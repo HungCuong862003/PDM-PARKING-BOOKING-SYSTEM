@@ -1,6 +1,5 @@
 package main.java.com.parkeasy.repository;
 
-import main.java.com.parkeasy.model.ParkingSlot;
 import main.java.com.parkeasy.model.Reservation;
 import main.java.com.parkeasy.util.DatabaseConnection;
 
