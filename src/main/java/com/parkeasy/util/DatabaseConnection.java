@@ -14,9 +14,6 @@ public class DatabaseConnection {
 
     private static DatabaseConnection instance = null;
 
-    // query
-    private static String query = "SELECT * FROM parkingspace";
-
     public static DatabaseConnection getInstance() {
         if (instance == null) {
             instance = new DatabaseConnection();

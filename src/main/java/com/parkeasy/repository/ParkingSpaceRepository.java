@@ -115,4 +115,79 @@ public class ParkingSpaceRepository {
             return null; // Return null if there was an error
         }
     }
+
+    // getParkingSpaceById
+    public ParkingSpace getParkingSpaceById(String parkingID) {
+        sql = "SELECT * FROM ParkingSpace WHERE ParkingID = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingID);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return new ParkingSpace(
+                        resultSet.getString("ParkingID"),
+                        resultSet.getString("ParkingAddress"),
+                        resultSet.getFloat("CostOfParking"),
+                        resultSet.getInt("NumberOfSlots"),
+                        resultSet.getInt("MaxDuration"),
+                        resultSet.getString("Description"),
+                        resultSet.getInt("AdminID"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null; // Return null if no parking space is found
+    }
+
+    // getAllParkingSpaces
+    public List<ParkingSpace> getAllParkingSpaces() {
+        sql = "SELECT * FROM ParkingSpace";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                ResultSet resultSet = preparedStatement.executeQuery()) {
+            List<ParkingSpace> parkingSpaces = new ArrayList<>();
+            while (resultSet.next()) {
+                ParkingSpace parkingSpace = new ParkingSpace(
+                        resultSet.getString("ParkingID"),
+                        resultSet.getString("ParkingAddress"),
+                        resultSet.getFloat("CostOfParking"),
+                        resultSet.getInt("NumberOfSlots"),
+                        resultSet.getInt("MaxDuration"),
+                        resultSet.getString("Description"),
+                        resultSet.getInt("AdminID"));
+                parkingSpaces.add(parkingSpace);
+            }
+            return parkingSpaces;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null; // Return null if there was an error
+        }
+    }
+
+    // getParkingSpacesByAdminId
+    public List<ParkingSpace> getParkingSpacesByAdminId(int adminID) {
+        sql = "SELECT * FROM ParkingSpace WHERE AdminID = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setInt(1, adminID);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            List<ParkingSpace> parkingSpaces = new ArrayList<>();
+            while (resultSet.next()) {
+                ParkingSpace parkingSpace = new ParkingSpace(
+                        resultSet.getString("ParkingID"),
+                        resultSet.getString("ParkingAddress"),
+                        resultSet.getFloat("CostOfParking"),
+                        resultSet.getInt("NumberOfSlots"),
+                        resultSet.getInt("MaxDuration"),
+                        resultSet.getString("Description"),
+                        resultSet.getInt("AdminID"));
+                parkingSpaces.add(parkingSpace);
+            }
+            return parkingSpaces;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null; // Return null if there was an error
+        }
+    }
+
 }
