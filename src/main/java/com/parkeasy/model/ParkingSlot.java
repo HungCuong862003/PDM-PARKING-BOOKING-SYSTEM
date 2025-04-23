@@ -33,7 +33,7 @@ public class ParkingSlot {
         this.slotNumber = slotNumber;
     }
 
-    public boolean isAvailability() {
+    public boolean getAvailability() {
         return availability;
     }
 
