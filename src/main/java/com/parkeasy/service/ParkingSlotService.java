@@ -13,7 +13,7 @@ public class ParkingSlotService {
     }
 
     // insert a new parking slot into the database
-    public void insertParkingSpace(ParkingSlot parkingSlot) {
+    public void insertParkingSlot(ParkingSlot parkingSlot) {
         parkingSlotRepository.insertParkingSlot(parkingSlot);
     }
 
