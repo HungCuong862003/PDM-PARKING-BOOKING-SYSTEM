@@ -3,6 +3,7 @@ package main.java.com.parkeasy.service;
 import main.java.com.parkeasy.model.ParkingSpace;
 import main.java.com.parkeasy.repository.ParkingSpaceRepository;
 
+import java.sql.SQLException;
 import java.util.List;
 
 public class ParkingSpaceService {
@@ -14,7 +15,14 @@ public class ParkingSpaceService {
 
     // insert a new parking space into the database
     public void insertParkingSpace(ParkingSpace parkingSpace) {
-        parkingSpaceRepository.insertParkingSpace(parkingSpace);
+        try {
+            parkingSpaceRepository.addParkingSpace(parkingSpace);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // Handle the exception appropriately, e.g., log it or rethrow it as a runtime
+            // exception
+            throw new RuntimeException("Error inserting parking space", e);
+        }
     }
 
     // get a parking space by its ID
@@ -32,13 +40,4 @@ public class ParkingSpaceService {
         return parkingSpaceRepository.getParkingSpacesByAdminId(adminID);
     }
 
-    // delete a parking space by its ID
-    public void deleteParkingSpaceById(String parkingID) {
-        parkingSpaceRepository.deleteParkingSpaceById(parkingID);
-    }
-
-    // update a parking space by its ID
-    public void updateParkingSpaceById(String parkingID, ParkingSpace parkingSpace) {
-        parkingSpaceRepository.updateParkingSpaceById(parkingID, parkingSpace);
-    }
 }

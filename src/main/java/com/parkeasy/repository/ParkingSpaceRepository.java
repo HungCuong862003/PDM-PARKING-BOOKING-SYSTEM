@@ -1,106 +1,67 @@
 package main.java.com.parkeasy.repository;
 
-import java.sql.*;
+import main.java.com.parkeasy.model.ParkingSpace;
+import main.java.com.parkeasy.util.DatabaseConnection;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import main.java.com.parkeasy.model.ParkingSpace;
-import main.java.com.parkeasy.util.DatabaseConnection;
-
 public class ParkingSpaceRepository {
-    // insert a new parking space into the database
-    public void insertParkingSpace(ParkingSpace parkingSpace) {
-        String sql = "INSERT INTO parkingSpace (ParkingID, ParkingAddress, CostOfParking, NumberOfSlots, MaxDuration, Description, AdminID) VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+    private String sql;
+
+    // method to add a new parking space and return the generated ID
+    public int addParkingSpace(ParkingSpace parkingSpace) throws SQLException {
+        // Check if AdminID exists in the admin table
+        String checkAdminSql = "SELECT COUNT(*) FROM Admin WHERE AdminID = ?";
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement checkAdminStatement = connection.prepareStatement(checkAdminSql)) {
+            checkAdminStatement.setInt(1, parkingSpace.getAdminID());
+            try (ResultSet resultSet = checkAdminStatement.executeQuery()) {
+                if (resultSet.next() && resultSet.getInt(1) == 0) {
+                    throw new SQLException(
+                            "AdminID " + parkingSpace.getAdminID() + " does not exist in the admin table.");
+                }
+            }
+        }
+
+        sql = "INSERT INTO ParkingSpace (ParkingID, ParkingAddress, CostOfParking, NumberOfSlots, MaxDuration, Description, AdminID) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql,
+                        Statement.RETURN_GENERATED_KEYS)) { // Use RETURN_GENERATED_KEYS to get the generated ID
+            // Set the parameters for the prepared statement
             preparedStatement.setString(1, parkingSpace.getParkingID());
             preparedStatement.setString(2, parkingSpace.getParkingAddress());
             preparedStatement.setFloat(3, parkingSpace.getCostOfParking());
             preparedStatement.setInt(4, parkingSpace.getNumberOfSlots());
-            preparedStatement.setInt(5, parkingSpace.getMaxDuration());
+            preparedStatement.setObject(5, parkingSpace.getMaxDuration(), java.sql.Types.INTEGER);
             preparedStatement.setString(6, parkingSpace.getDescription());
             preparedStatement.setInt(7, parkingSpace.getAdminID());
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 
-    // get a parking space by its ID
-    public ParkingSpace getParkingSpaceById(String parkingID) {
-        String sql = "SELECT * FROM parkingSpace WHERE ParkingID = ?";
-        try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setString(1, parkingID);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                return new ParkingSpace(resultSet.getString("ParkingID"), resultSet.getString("ParkingAddress"),
-                        resultSet.getFloat("CostOfParking"), resultSet.getInt("NumberOfSlots"),
-                        resultSet.getInt("MaxDuration"), resultSet.getString("Description"),
-                        resultSet.getInt("AdminID"));
+            int affectedRows = preparedStatement.executeUpdate();
+
+            if (affectedRows == 0) {
+                throw new SQLException("Creating parking space failed, no rows affected.");
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
 
-    // get all parking spaces
-    public List<ParkingSpace> getAllParkingSpaces() {
-        List<ParkingSpace> parkingSpaces = new ArrayList<>();
-        String sql = "SELECT * FROM parkingSpace";
-        try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql);
-                ResultSet resultSet = preparedStatement.executeQuery(sql)) {
-            while (resultSet.next()) {
-                parkingSpaces
-                        .add(new ParkingSpace(resultSet.getString("ParkingID"), resultSet.getString("ParkingAddress"),
-                                resultSet.getFloat("CostOfParking"), resultSet.getInt("NumberOfSlots"),
-                                resultSet.getInt("MaxDuration"), resultSet.getString("Description"),
-                                resultSet.getInt("AdminID")));
+            try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getInt(1); // Return the generated ID
+                } else {
+                    throw new SQLException("Creating parking space failed, no ID obtained.");
+                }
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return parkingSpaces;
-    }
-
-    // get all parking spaces by admin ID
-    public List<ParkingSpace> getParkingSpacesByAdminId(int adminID) {
-        List<ParkingSpace> parkingSpaces = new ArrayList<>();
-        String sql = "SELECT * FROM parkingSpace WHERE AdminID = ?";
-        try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, adminID);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                parkingSpaces
-                        .add(new ParkingSpace(resultSet.getString("ParkingID"), resultSet.getString("ParkingAddress"),
-                                resultSet.getFloat("CostOfParking"), resultSet.getInt("NumberOfSlots"),
-                                resultSet.getInt("MaxDuration"), resultSet.getString("Description"),
-                                resultSet.getInt("AdminID")));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return parkingSpaces;
-    }
-
-    // delete a parking space by its ID
-    public void deleteParkingSpaceById(String parkingID) {
-        String sql = "DELETE FROM parkingSpace WHERE ParkingID = ?";
-        try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setString(1, parkingID);
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 
-    // update a parking space by its ID
-    public void updateParkingSpaceById(String parkingID, ParkingSpace parkingSpace) {
-        String sql = "UPDATE parkingSpace SET ParkingAddress = ?, CostOfParking = ?, NumberOfSlots = ?, MaxDuration = ?, Description = ?, AdminID = ? WHERE ParkingID = ?";
+    public boolean updateParkingSpace(ParkingSpace parkingSpace) {
+        sql = "UPDATE ParkingSpace SET ParkingAddress = ?, CostOfParking = ?, NumberOfSlots = ?, MaxDuration = ?, Description = ? WHERE ParkingID = ?";
         try (Connection connection = DatabaseConnection.getConnection();
                 PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setString(1, parkingSpace.getParkingAddress());
@@ -108,11 +69,125 @@ public class ParkingSpaceRepository {
             preparedStatement.setInt(3, parkingSpace.getNumberOfSlots());
             preparedStatement.setInt(4, parkingSpace.getMaxDuration());
             preparedStatement.setString(5, parkingSpace.getDescription());
-            preparedStatement.setInt(6, parkingSpace.getAdminID());
-            preparedStatement.setString(7, parkingID);
+            preparedStatement.setString(6, parkingSpace.getParkingID());
+
+            int rowsAffected = preparedStatement.executeUpdate();
+            return rowsAffected > 0; // Return true if the update was successful
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false; // Return false if there was an error
+        }
+    }
+
+    // delete parking space by ID
+    public void deleteParkingSpace(String spaceId) {
+        sql = "DELETE FROM ParkingSpace WHERE ParkingID = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, spaceId);
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
+    // get all parking spaces
+    public List<ParkingSpace> findAll() {
+        sql = "SELECT * FROM ParkingSpace";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                ResultSet resultSet = preparedStatement.executeQuery()) {
+            List<ParkingSpace> parkingSpaces = new ArrayList<>();
+            while (resultSet.next()) {
+                ParkingSpace parkingSpace = new ParkingSpace(
+                        resultSet.getString("ParkingID"),
+                        resultSet.getString("ParkingAddress"),
+                        resultSet.getFloat("CostOfParking"),
+                        resultSet.getInt("NumberOfSlots"),
+                        resultSet.getInt("MaxDuration"),
+                        resultSet.getString("Description"),
+                        resultSet.getInt("AdminID"));
+                parkingSpaces.add(parkingSpace);
+            }
+            return parkingSpaces;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null; // Return null if there was an error
+        }
+    }
+
+    // getParkingSpaceById
+    public ParkingSpace getParkingSpaceById(String parkingID) {
+        sql = "SELECT * FROM ParkingSpace WHERE ParkingID = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingID);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return new ParkingSpace(
+                        resultSet.getString("ParkingID"),
+                        resultSet.getString("ParkingAddress"),
+                        resultSet.getFloat("CostOfParking"),
+                        resultSet.getInt("NumberOfSlots"),
+                        resultSet.getInt("MaxDuration"),
+                        resultSet.getString("Description"),
+                        resultSet.getInt("AdminID"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null; // Return null if no parking space is found
+    }
+
+    // getAllParkingSpaces
+    public List<ParkingSpace> getAllParkingSpaces() {
+        sql = "SELECT * FROM ParkingSpace";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                ResultSet resultSet = preparedStatement.executeQuery()) {
+            List<ParkingSpace> parkingSpaces = new ArrayList<>();
+            while (resultSet.next()) {
+                ParkingSpace parkingSpace = new ParkingSpace(
+                        resultSet.getString("ParkingID"),
+                        resultSet.getString("ParkingAddress"),
+                        resultSet.getFloat("CostOfParking"),
+                        resultSet.getInt("NumberOfSlots"),
+                        resultSet.getInt("MaxDuration"),
+                        resultSet.getString("Description"),
+                        resultSet.getInt("AdminID"));
+                parkingSpaces.add(parkingSpace);
+            }
+            return parkingSpaces;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null; // Return null if there was an error
+        }
+    }
+
+    // getParkingSpacesByAdminId
+    public List<ParkingSpace> getParkingSpacesByAdminId(int adminID) {
+        sql = "SELECT * FROM ParkingSpace WHERE AdminID = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setInt(1, adminID);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            List<ParkingSpace> parkingSpaces = new ArrayList<>();
+            while (resultSet.next()) {
+                ParkingSpace parkingSpace = new ParkingSpace(
+                        resultSet.getString("ParkingID"),
+                        resultSet.getString("ParkingAddress"),
+                        resultSet.getFloat("CostOfParking"),
+                        resultSet.getInt("NumberOfSlots"),
+                        resultSet.getInt("MaxDuration"),
+                        resultSet.getString("Description"),
+                        resultSet.getInt("AdminID"));
+                parkingSpaces.add(parkingSpace);
+            }
+            return parkingSpaces;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null; // Return null if there was an error
+        }
+    }
+
 }
