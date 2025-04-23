@@ -8,9 +8,9 @@ public class ParkingSlot {
     private String slotNumber;
     private boolean availability;
     // foreign key
-    private int parkingID;
+    private String parkingID;
 
-    public ParkingSlot(int slotID, String slotNumber, boolean availability, int parkingID) {
+    public ParkingSlot(int slotID, String slotNumber, boolean availability, String parkingID) {
         this.slotID = slotID;
         this.slotNumber = slotNumber;
         this.availability = availability;
@@ -37,7 +37,7 @@ public class ParkingSlot {
         this.slotNumber = slotNumber;
     }
 
-    public boolean isAvailability() {
+    public boolean getAvailability() {
         return availability;
     }
 
@@ -45,11 +45,11 @@ public class ParkingSlot {
         this.availability = availability;
     }
 
-    public int getParkingID() {
+    public String getParkingID() {
         return parkingID;
     }
 
-    public void setParkingID(int parkingID) {
+    public void setParkingID(String parkingID) {
         this.parkingID = parkingID;
     }
 

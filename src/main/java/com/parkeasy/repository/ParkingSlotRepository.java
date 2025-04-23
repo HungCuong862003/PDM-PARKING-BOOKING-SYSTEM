@@ -20,7 +20,7 @@ public class ParkingSlotRepository {
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparedStatement.setInt(1, slot.getSlotID());
             preparedStatement.setString(2, slot.getSlotNumber());
-            preparedStatement.setBoolean(3, slot.isAvailability());
+            preparedStatement.setBoolean(3, slot.getAvailability());
             preparedStatement.setString(4, slot.getParkingID());
 
             int affectedRows = preparedStatement.executeUpdate();
@@ -49,7 +49,7 @@ public class ParkingSlotRepository {
         sql = "UPDATE parkingslot SET SlotNumber = ?, Available = ?, ParkingID = ? WHERE SlotID = ?";
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setString(1, slot.getSlotNumber());
-            preparedStatement.setBoolean(2, slot.isAvailability());
+            preparedStatement.setBoolean(2, slot.getAvailability());
             preparedStatement.setString(3, slot.getParkingID()); // Set the parking ID from the slot object
             preparedStatement.setInt(4, slot.getSlotID()); // Set the SlotID
             int rowsUpdated = preparedStatement.executeUpdate();

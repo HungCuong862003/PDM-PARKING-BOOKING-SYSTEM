@@ -2,52 +2,66 @@ package main.java.com.parkeasy.repository;
 
 import main.java.com.parkeasy.model.Vehicle;
 import main.java.com.parkeasy.util.DatabaseConnection;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class VehicleRepository {
-
-    public Vehicle getVehicleById(String vehicleID) {
-        String query = "SELECT * FROM vehicles WHERE vehicleID = ?";
+    // Insert a new vehicle into the database
+    public void insertVehicle(Vehicle vehicle) {
+        String sql = "INSERT INTO vehicles (VehicleID, UserID) VALUES (?, ?)";
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, vehicle.getVehicleID());
+            preparedStatement.setInt(2, vehicle.getUserID());
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // get a vehicle by its ID
+    public Vehicle getVehicleById(String vehicleID) {
+        String sql = "SELECT * FROM vehicles WHERE VehicleID = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setString(1, vehicleID);
             ResultSet resultSet = preparedStatement.executeQuery();
-
             if (resultSet.next()) {
-                return new Vehicle(
-                        resultSet.getString("vehicleID"),
-                        resultSet.getInt("userID"));
+                return new Vehicle(resultSet.getString("VehicleID"), resultSet.getInt("UserID"));
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    public boolean addVehicle(Vehicle vehicle) {
-        String query = "INSERT INTO vehicles (vehicleID, userID) VALUES (?, ?)";
+    // get all vehicles
+    public List<Vehicle> getAllVehicles() {
+        List<Vehicle> vehicles = new ArrayList<>();
+        String sql = "SELECT * FROM vehicles";
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-            preparedStatement.setString(1, vehicle.getVehicleID());
-            preparedStatement.setInt(2, vehicle.getUserID());
-            return preparedStatement.executeUpdate() > 0;
-        } catch (Exception e) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                ResultSet resultSet = preparedStatement.executeQuery(sql)) {
+            while (resultSet.next()) {
+                vehicles.add(new Vehicle(resultSet.getString("VehicleID"), resultSet.getInt("UserID")));
+            }
+        } catch (SQLException e) {
             e.printStackTrace();
         }
-        return false;
+        return vehicles;
     }
 
-    public boolean deleteVehicleById(String vehicleID) {
-        String query = "DELETE FROM vehicles WHERE vehicleID = ?";
+    // delete a vehicle by its ID
+    public void deleteVehicleById(String vehicleID) {
+        String sql = "DELETE FROM vehicles WHERE VehicleID = ?";
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setString(1, vehicleID);
-            return preparedStatement.executeUpdate() > 0;
-        } catch (Exception e) {
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
             e.printStackTrace();
         }
-        return false;
     }
 }
