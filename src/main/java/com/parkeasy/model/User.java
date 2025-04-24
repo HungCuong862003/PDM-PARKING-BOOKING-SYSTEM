@@ -3,15 +3,15 @@ package main.java.com.parkeasy.model;
 
 public class User {
     private int userID;
-    private String userName;
+    private String UserName;
     private String phone;
     private String email;
     private String password;
 
 
-    public User(int userID,String phone, String userName, String email, String password) {
+    public User(int userID,String phone, String UserName, String email, String password) {
         this.userID = userID;
-        this.userName = userName;
+        this.UserName = UserName;
         this.phone = phone;
         this.email = email;
         this.password = password;
@@ -25,12 +25,12 @@ public class User {
         this.userID = userID;
     }
 
-    public String getuserName() {
-        return userName;
+    public String getUserName() {
+        return UserName;
     }
 
-    public void setuserName(String userName) {
-        this.userName = userName;
+    public void setUserName(String UserName) {
+        this.UserName = UserName;
     }
 
     public String getPhone() {
