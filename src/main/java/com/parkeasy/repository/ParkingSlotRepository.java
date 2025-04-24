@@ -8,6 +8,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ParkingSlotRepository {
 
     private String sql;
@@ -43,14 +46,15 @@ public class ParkingSlotRepository {
         }
     }
 
-    public boolean updateParkingSlot(ParkingSlot slot) {
+    // updateParkingSlotById
+    public boolean updateParkingSlotById(int slotID, ParkingSlot parkingSlot) {
         connection = DatabaseConnection.getConnection();
         sql = "UPDATE parkingslot SET SlotNumber = ?, Available = ?, ParkingID = ? WHERE SlotID = ?";
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setString(1, slot.getSlotNumber());
-            preparedStatement.setBoolean(2, slot.getAvailability());
-            preparedStatement.setString(3, slot.getParkingID()); // Set the parking ID from the slot object
-            preparedStatement.setInt(4, slot.getSlotID()); // Set the SlotID
+            preparedStatement.setString(1, parkingSlot.getSlotNumber());
+            preparedStatement.setBoolean(2, parkingSlot.getAvailability());
+            preparedStatement.setString(3, parkingSlot.getParkingID());
+            preparedStatement.setInt(4, slotID);
             int rowsUpdated = preparedStatement.executeUpdate();
             return rowsUpdated > 0; // Return true if at least one row was updated
         } catch (SQLException e) {
@@ -61,14 +65,20 @@ public class ParkingSlotRepository {
         }
     }
 
-    public void deleteParkingSlot(String slotId) {
+    // updateParkingSlot bty parking slot object
+    public boolean updateParkingSlot(ParkingSlot parkingSlot) {
         connection = DatabaseConnection.getConnection();
-        sql = "DELETE FROM parkingslot WHERE SlotID = ?";
+        sql = "UPDATE parkingslot SET SlotNumber = ?, Available = ?, ParkingID = ? WHERE SlotID = ?";
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setString(1, slotId);
-            preparedStatement.executeUpdate();
+            preparedStatement.setString(1, parkingSlot.getSlotNumber());
+            preparedStatement.setBoolean(2, parkingSlot.getAvailability());
+            preparedStatement.setString(3, parkingSlot.getParkingID());
+            preparedStatement.setInt(4, parkingSlot.getSlotID());
+            int rowsUpdated = preparedStatement.executeUpdate();
+            return rowsUpdated > 0; // Return true if at least one row was updated
         } catch (SQLException e) {
             e.printStackTrace();
+            return false; // Return false in case of an exception
         } finally {
             DatabaseConnection.closeConnection(connection);
         }
@@ -113,5 +123,45 @@ public class ParkingSlotRepository {
             DatabaseConnection.closeConnection(connection);
         }
         return null; // Return null if not found
+    }
+
+    // get parking slots by parking space ID
+    public List<ParkingSlot> getParkingSlotsByParkingSpaceId(String parkingID) {
+        List<ParkingSlot> parkingSlots = new ArrayList<>();
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT * FROM parkingslot WHERE ParkingID = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingID);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                ParkingSlot slot = new ParkingSlot(
+                        resultSet.getInt("SlotID"),
+                        resultSet.getString("SlotNumber"),
+                        resultSet.getBoolean("Available"),
+                        resultSet.getString("ParkingID"));
+                parkingSlots.add(slot);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return parkingSlots;
+    }
+
+    // delete parking slot by ID
+    public boolean deleteParkingSlot(String slotID) {
+        connection = DatabaseConnection.getConnection();
+        sql = "DELETE FROM parkingslot WHERE SlotID = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, slotID);
+            int rowsAffected = preparedStatement.executeUpdate();
+            return rowsAffected > 0; // Return true if at least one row was deleted
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false; // Return false in case of an exception
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
     }
 }
