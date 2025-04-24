@@ -14,12 +14,12 @@ public class ParkingSlotService {
 
     // insert a new parking slot into the database
     public void insertParkingSlot(ParkingSlot parkingSlot) {
-        parkingSlotRepository.insertParkingSlot(parkingSlot);
+        parkingSlotRepository.addParkingSlot(parkingSlot);
     }
 
     // get a parking slot by its ID
     public ParkingSlot getParkingSlotById(int slotID) {
-        return parkingSlotRepository.getParkingSlotById(slotID);
+        return parkingSlotRepository.findParkingSlotById(slotID);
     }
 
     // get all parking slots by parking space ID
@@ -28,8 +28,8 @@ public class ParkingSlotService {
     }
 
     // delete a parking slot by its ID
-    public void deleteParkingSlotById(int slotID) {
-        parkingSlotRepository.deleteParkingSlotById(slotID);
+    public void deleteParkingSlotById(String slotID) {
+        parkingSlotRepository.deleteParkingSlot(slotID);
     }
 
     // update a parking slot by its ID
