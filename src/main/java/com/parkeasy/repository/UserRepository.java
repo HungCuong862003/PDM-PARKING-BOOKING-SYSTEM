@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class UserRepository {
     private String sql;
@@ -25,7 +26,7 @@ public class UserRepository {
             connection = DatabaseConnection.getConnection();
             sql = "INSERT INTO user (userName, phone, email, password) VALUES (?, ?, ?, ?)";
             preparedStatement = connection.prepareStatement(sql);
-            preparedStatement.setString(1, user.getuserName());
+            preparedStatement.setString(1, user.getUserName());
             preparedStatement.setString(2, user.getPhone());
             preparedStatement.setString(3, user.getEmail());
             preparedStatement.setString(4, user.getPassword());
@@ -66,5 +67,33 @@ public class UserRepository {
             DatabaseConnection.closeConnection(connection);
         }
         return users;
+    }
+
+    // Find user by email
+    public Optional<User> findByEmail(String email) {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            sql = "SELECT * FROM user WHERE email = ?";
+            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setString(1, email);
+            resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                int userID = resultSet.getInt("userID");
+                String userName = resultSet.getString("userName");
+                String phone = resultSet.getString("phone");
+                String password = resultSet.getString("password");
+                return Optional.of(new User(userID, phone, userName, email, password));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
+        }
+        return Optional.empty();
     }
 }
