@@ -20,6 +20,7 @@ public class VehicleService {
 
     /**
      * Constructor for VehicleService with dependency injection
+     * 
      * @param vehicleRepository The repository to use for vehicle operations
      */
     public VehicleService(VehicleRepository vehicleRepository) {
@@ -36,6 +37,7 @@ public class VehicleService {
 
     /**
      * Gets all vehicles registered to a user
+     * 
      * @param userId The ID of the user
      * @return List of vehicles belonging to the user, empty list if none found
      */
@@ -46,7 +48,7 @@ public class VehicleService {
                 return Collections.emptyList();
             }
 
-            return vehicleRepository.getVehiclesByUserId(userId);
+            return vehicleRepository.getListOfVehiclesByUserId(userId);
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error retrieving vehicles for user: " + userId, e);
             return Collections.emptyList();
@@ -55,6 +57,7 @@ public class VehicleService {
 
     /**
      * Gets a specific vehicle by its ID
+     * 
      * @param vehicleId The ID of the vehicle
      * @return Optional containing Vehicle if found, empty Optional otherwise
      */
@@ -75,6 +78,7 @@ public class VehicleService {
 
     /**
      * Adds a new vehicle
+     * 
      * @param vehicle The vehicle to add
      * @return boolean indicating success or failure
      * @throws IllegalArgumentException if vehicle is null or has invalid properties
@@ -102,6 +106,7 @@ public class VehicleService {
 
     /**
      * Removes a vehicle
+     * 
      * @param vehicleId The ID of the vehicle to remove
      * @return boolean indicating success or failure
      */
@@ -121,6 +126,7 @@ public class VehicleService {
 
     /**
      * Checks if a vehicle is already registered
+     * 
      * @param vehicleId The ID to check
      * @return boolean indicating if the vehicle is registered
      */
@@ -139,8 +145,9 @@ public class VehicleService {
 
     /**
      * Checks if a vehicle belongs to a specific user
+     * 
      * @param vehicleId The ID of the vehicle
-     * @param userId The ID of the user
+     * @param userId    The ID of the user
      * @return boolean indicating if the vehicle belongs to the user
      */
     public boolean isVehicleOwnedByUser(String vehicleId, int userId) {
@@ -160,6 +167,7 @@ public class VehicleService {
 
     /**
      * Gets count of vehicles owned by a user
+     * 
      * @param userId The ID of the user
      * @return The number of vehicles owned by the user
      */
@@ -179,7 +187,8 @@ public class VehicleService {
 
     /**
      * Updates a vehicle's information
-     * @param vehicleId The ID of the vehicle to update
+     * 
+     * @param vehicleId      The ID of the vehicle to update
      * @param updatedVehicle The updated vehicle information
      * @return boolean indicating success or failure
      * @throws IllegalArgumentException if vehicle has invalid properties
@@ -223,6 +232,7 @@ public class VehicleService {
 
     /**
      * Gets all vehicles in the system (admin function)
+     * 
      * @return List of all vehicles
      */
     public List<Vehicle> getAllVehicles() {
@@ -236,7 +246,8 @@ public class VehicleService {
 
     /**
      * Checks if a user has reached the maximum allowed vehicles
-     * @param userId The ID of the user
+     * 
+     * @param userId             The ID of the user
      * @param maxVehiclesPerUser The maximum number of vehicles allowed per user
      * @return boolean indicating if the user has reached the limit
      */
@@ -257,7 +268,9 @@ public class VehicleService {
     }
 
     /**
-     * Checks if a user has reached the maximum allowed vehicles using system constant
+     * Checks if a user has reached the maximum allowed vehicles using system
+     * constant
+     * 
      * @param userId The ID of the user
      * @return boolean indicating if the user has reached the limit
      */
@@ -267,6 +280,7 @@ public class VehicleService {
 
     /**
      * Validates vehicle object properties
+     * 
      * @param vehicle The vehicle to validate
      * @throws IllegalArgumentException if validation fails
      */

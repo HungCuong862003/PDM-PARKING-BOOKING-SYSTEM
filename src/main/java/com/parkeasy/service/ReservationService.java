@@ -17,8 +17,10 @@ import java.util.List;
 
 /**
  * Service class for handling reservation operations in the ParkEasy system.
- * Provides functionality for creating, retrieving, updating, and canceling parking reservations,
- * as well as checking availability and managing reservations for specific parking spaces.
+ * Provides functionality for creating, retrieving, updating, and canceling
+ * parking reservations,
+ * as well as checking availability and managing reservations for specific
+ * parking spaces.
  */
 public class ReservationService {
     private final ReservationRepository reservationRepository;
@@ -286,7 +288,7 @@ public class ReservationService {
         }
 
         try {
-            List<Integer> slotIDs = parkingSlotRepository.getSlotIdsByParkingId(parkingID);
+            List<Integer> slotIDs = parkingSlotRepository.getListOfSlotIdsByParkingId(parkingID);
             List<Reservation> reservations = new ArrayList<>();
 
             for (Integer slotID : slotIDs) {
@@ -306,11 +308,12 @@ public class ReservationService {
      * Gets reservations within a specific date range for a list of parking spaces.
      *
      * @param parkingSpaces List of parking spaces
-     * @param startDate Start date for the range (YYYY-MM-DD)
-     * @param endDate End date for the range (YYYY-MM-DD)
+     * @param startDate     Start date for the range (YYYY-MM-DD)
+     * @param endDate       End date for the range (YYYY-MM-DD)
      * @return List of reservations within the date range
      */
-    public List<Reservation> getReservationsByDateRange(List<ParkingSpace> parkingSpaces, String startDate, String endDate) {
+    public List<Reservation> getReservationsByDateRange(List<ParkingSpace> parkingSpaces, String startDate,
+            String endDate) {
         if (parkingSpaces == null || parkingSpaces.isEmpty() ||
                 !isValidDateFormat(startDate) || !isValidDateFormat(endDate)) {
             System.err.println("Invalid parameters for date range search");
@@ -321,7 +324,7 @@ public class ReservationService {
             List<Reservation> allReservations = new ArrayList<>();
 
             for (ParkingSpace space : parkingSpaces) {
-                List<Integer> slotIDs = parkingSlotRepository.getSlotIdsByParkingId(space.getParkingID());
+                List<Integer> slotIDs = parkingSlotRepository.getListOfSlotIdsByParkingId(space.getParkingID());
                 for (Integer slotID : slotIDs) {
                     List<Reservation> slotReservations = reservationRepository.getReservationsByDateRange(
                             slotID, startDate, endDate);
@@ -375,7 +378,7 @@ public class ReservationService {
      * Updates a reservation by its ID.
      *
      * @param reservationID The ID of the reservation to update
-     * @param reservation The updated reservation data
+     * @param reservation   The updated reservation data
      * @return true if update successful, false otherwise
      */
     public boolean updateReservationById(int reservationID, Reservation reservation) {
@@ -534,11 +537,11 @@ public class ReservationService {
     /**
      * Checks if a parking slot is available for a given time period.
      *
-     * @param slotID The ID of the parking slot
+     * @param slotID    The ID of the parking slot
      * @param startDate Start date (YYYY-MM-DD)
      * @param startTime Start time (HH:MM)
-     * @param endDate End date (YYYY-MM-DD)
-     * @param endTime End time (HH:MM)
+     * @param endDate   End date (YYYY-MM-DD)
+     * @param endTime   End time (HH:MM)
      * @return true if slot is available, false otherwise
      */
     public boolean isSlotAvailable(int slotID, String startDate, String startTime, String endDate, String endTime) {
@@ -550,7 +553,7 @@ public class ReservationService {
         }
 
         try {
-            return reservationRepository.checkSlotAvailability(slotID, startDate, startTime, endDate, endTime);
+            return reservationRepository.isSlotAvailability(slotID, startDate, startTime, endDate, endTime);
         } catch (Exception e) {
             System.err.println("Error checking slot availability: " + e.getMessage());
             e.printStackTrace();
@@ -564,11 +567,12 @@ public class ReservationService {
      * @param parkingID The ID of the parking space
      * @param startDate Start date (YYYY-MM-DD)
      * @param startTime Start time (HH:MM)
-     * @param endDate End date (YYYY-MM-DD)
-     * @param endTime End time (HH:MM)
+     * @param endDate   End date (YYYY-MM-DD)
+     * @param endTime   End time (HH:MM)
      * @return List of available slot IDs
      */
-    public List<Integer> findAvailableSlots(String parkingID, String startDate, String startTime, String endDate, String endTime) {
+    public List<Integer> findAvailableSlots(String parkingID, String startDate, String startTime, String endDate,
+            String endTime) {
         if (parkingID == null || parkingID.trim().isEmpty() ||
                 !isValidDateFormat(startDate) || !isValidTimeFormat(startTime) ||
                 !isValidDateFormat(endDate) || !isValidTimeFormat(endTime)) {
@@ -577,7 +581,7 @@ public class ReservationService {
         }
 
         try {
-            List<Integer> allSlots = parkingSlotRepository.getSlotIdsByParkingId(parkingID);
+            List<Integer> allSlots = parkingSlotRepository.getListOfSlotIdsByParkingId(parkingID);
             List<Integer> availableSlots = new ArrayList<>();
 
             for (Integer slotID : allSlots) {
@@ -601,7 +605,7 @@ public class ReservationService {
      */
     public List<Reservation> getActiveReservations() {
         try {
-            return reservationRepository.getReservationsByStatus(STATUS_ACTIVE);
+            return reservationRepository.getListOfReservationsByStatus(STATUS_ACTIVE);
         } catch (Exception e) {
             System.err.println("Error retrieving active reservations: " + e.getMessage());
             e.printStackTrace();
@@ -622,7 +626,7 @@ public class ReservationService {
         }
 
         try {
-            return reservationRepository.getReservationsByStatus(status);
+            return reservationRepository.getListOfReservationsByStatus(status);
         } catch (Exception e) {
             System.err.println("Error retrieving reservations by status: " + e.getMessage());
             e.printStackTrace();

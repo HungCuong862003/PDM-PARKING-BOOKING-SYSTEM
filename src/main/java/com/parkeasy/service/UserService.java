@@ -22,7 +22,8 @@ import java.util.List;
 
 /**
  * Service class for handling user-specific operations in the ParkEasy system.
- * Provides functionality for managing user profiles, vehicles, cards, reservations, and account balance.
+ * Provides functionality for managing user profiles, vehicles, cards,
+ * reservations, and account balance.
  */
 public class UserService {
 
@@ -203,7 +204,7 @@ public class UserService {
     /**
      * Verifies a user's password.
      *
-     * @param email The user's email
+     * @param email    The user's email
      * @param password The password to verify
      * @return true if password is correct, false otherwise
      */
@@ -243,7 +244,8 @@ public class UserService {
 
             for (byte b : hash) {
                 String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
+                if (hex.length() == 1)
+                    hexString.append('0');
                 hexString.append(hex);
             }
 
@@ -258,9 +260,9 @@ public class UserService {
     /**
      * Updates a user's password.
      *
-     * @param userID The user's unique identifier
+     * @param userID          The user's unique identifier
      * @param currentPassword The current password (for verification)
-     * @param newPassword The new password
+     * @param newPassword     The new password
      * @return true if update successful, false otherwise
      */
     public boolean updatePassword(int userID, String currentPassword, String newPassword) {
@@ -379,14 +381,14 @@ public class UserService {
      * @return List of vehicles owned by the user
      */
     public List<Vehicle> getUserVehicles(int userID) {
-        return vehicleRepository.getVehiclesByUserId(userID);
+        return vehicleRepository.getListOfVehiclesByUserId(userID);
     }
 
     /**
      * Gets a specific vehicle by its ID and user ID.
      *
      * @param vehicleID The vehicle's unique identifier
-     * @param userID The user's unique identifier
+     * @param userID    The user's unique identifier
      * @return The Vehicle object if found, null otherwise
      */
     public Vehicle getVehicleById(String vehicleID, int userID) {
@@ -411,7 +413,7 @@ public class UserService {
      * Removes a vehicle for a user.
      *
      * @param vehicleID The vehicle's unique identifier
-     * @param userID The user's unique identifier
+     * @param userID    The user's unique identifier
      * @return true if removal successful, false otherwise
      */
     public boolean removeVehicle(String vehicleID, int userID) {
@@ -439,7 +441,7 @@ public class UserService {
      * @return List of cards associated with the user
      */
     public List<Card> getUserCards(int userID) {
-        return cardRepository.getCardsByUserId(userID);
+        return cardRepository.getListOfCardsByUserId(userID);
     }
 
     /**
@@ -456,12 +458,12 @@ public class UserService {
      * Removes a card for a user.
      *
      * @param cardNumber The card's unique identifier
-     * @param userID The user's unique identifier
+     * @param userID     The user's unique identifier
      * @return true if removal successful, false otherwise
      */
     public boolean removeCard(String cardNumber, int userID) {
         // Check if card belongs to user
-        Card card = cardRepository.getCardByNumber(cardNumber);
+        Card card = cardRepository.getCardByCardNumber(cardNumber);
         if (card == null || card.getUserID() != userID) {
             return false;
         }
@@ -511,7 +513,7 @@ public class UserService {
      * Gets a specific reservation by its ID and user ID.
      *
      * @param reservationID The reservation's unique identifier
-     * @param userID The user's unique identifier
+     * @param userID        The user's unique identifier
      * @return The Reservation object if found, null otherwise
      */
     public Reservation getReservationById(int reservationID, int userID) {
@@ -532,7 +534,7 @@ public class UserService {
      * Cancels a reservation.
      *
      * @param reservationID The reservation's unique identifier
-     * @param userID The user's unique identifier
+     * @param userID        The user's unique identifier
      * @return true if cancellation successful, false otherwise
      */
     public boolean cancelReservation(int reservationID, int userID) {

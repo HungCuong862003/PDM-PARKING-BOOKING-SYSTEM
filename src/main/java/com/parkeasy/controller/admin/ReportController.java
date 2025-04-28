@@ -25,7 +25,8 @@ import java.util.Map;
 
 /**
  * Controller class for generating various reports for the admin.
- * Handles the interaction between the admin report interface and the service layer.
+ * Handles the interaction between the admin report interface and the service
+ * layer.
  */
 public class ReportController {
 
@@ -76,7 +77,7 @@ public class ReportController {
     /**
      * Generates a monthly revenue report for a specific month.
      *
-     * @param year The year for which to generate the report
+     * @param year  The year for which to generate the report
      * @param month The month for which to generate the report (1-12)
      * @return Map with parking space IDs as keys and monthly revenue as values
      */
@@ -128,7 +129,12 @@ public class ReportController {
      * @return List of maps containing customer data and activity statistics
      */
     public List<Map<String, Object>> generateCustomerActivityReport(int limit) {
-        CustomerManagementController customerController = new CustomerManagementController(currentAdmin);
+        CustomerManagementController customerController;
+        try {
+            customerController = new CustomerManagementController(currentAdmin);
+        } catch (SQLException e) {
+            throw new RuntimeException("Error initializing CustomerManagementController", e);
+        }
         return customerController.getTopCustomers(limit);
     }
 
@@ -136,7 +142,7 @@ public class ReportController {
      * Generates a reservation report for a specific date range.
      *
      * @param startDate Start date in format YYYY-MM-DD
-     * @param endDate End date in format YYYY-MM-DD
+     * @param endDate   End date in format YYYY-MM-DD
      * @return List of reservations in the specified date range
      */
     public List<Reservation> generateReservationReport(String startDate, String endDate) {
@@ -147,7 +153,8 @@ public class ReportController {
     /**
      * Exports a daily revenue report to a CSV file.
      *
-     * @param date The date for which to generate the report (in format YYYY-MM-DD)
+     * @param date     The date for which to generate the report (in format
+     *                 YYYY-MM-DD)
      * @param filePath The path where the CSV file should be saved
      * @return true if export successful, false otherwise
      */
@@ -188,8 +195,8 @@ public class ReportController {
     /**
      * Exports a monthly revenue report to a CSV file.
      *
-     * @param year The year for which to generate the report
-     * @param month The month for which to generate the report (1-12)
+     * @param year     The year for which to generate the report
+     * @param month    The month for which to generate the report (1-12)
      * @param filePath The path where the CSV file should be saved
      * @return true if export successful, false otherwise
      */
@@ -248,7 +255,7 @@ public class ReportController {
                 String address = space.getParkingAddress();
                 int totalSlots = space.getNumberOfSlots();
                 double occupancyRate = occupancyData.getOrDefault(parkingID, 0.0);
-                int occupiedSlots = (int)Math.round(totalSlots * occupancyRate / 100);
+                int occupiedSlots = (int) Math.round(totalSlots * occupancyRate / 100);
 
                 writer.write(parkingID + "," +
                         escapeCSV(address) + "," +
@@ -269,14 +276,15 @@ public class ReportController {
      * Exports a reservation report to a CSV file.
      *
      * @param startDate Start date in format YYYY-MM-DD
-     * @param endDate End date in format YYYY-MM-DD
-     * @param filePath The path where the CSV file should be saved
+     * @param endDate   End date in format YYYY-MM-DD
+     * @param filePath  The path where the CSV file should be saved
      * @return true if export successful, false otherwise
      */
     public boolean exportReservationReportToCSV(String startDate, String endDate, String filePath) {
         try (FileWriter writer = new FileWriter(filePath)) {
             // Write CSV header
-            writer.write("Reservation ID,Parking Space,Start Date,Start Time,End Date,End Time,Status,Vehicle ID,User Name\n");
+            writer.write(
+                    "Reservation ID,Parking Space,Start Date,Start Time,End Date,End Time,Status,Vehicle ID,User Name\n");
 
             // Get reservation data
             List<Reservation> reservations = generateReservationReport(startDate, endDate);
@@ -327,7 +335,8 @@ public class ReportController {
      * Populates a table model with daily revenue data for display in a JTable.
      *
      * @param tableModel The table model to populate
-     * @param date The date for which to display revenue (in format YYYY-MM-DD)
+     * @param date       The date for which to display revenue (in format
+     *                   YYYY-MM-DD)
      */
     public void populateDailyRevenueTable(DefaultTableModel tableModel, String date) {
         // Clear existing rows
@@ -374,8 +383,8 @@ public class ReportController {
      * Populates a table model with monthly revenue data for display in a JTable.
      *
      * @param tableModel The table model to populate
-     * @param year The year for which to display revenue
-     * @param month The month for which to display revenue (1-12)
+     * @param year       The year for which to display revenue
+     * @param month      The month for which to display revenue (1-12)
      */
     public void populateMonthlyRevenueTable(DefaultTableModel tableModel, int year, int month) {
         // Clear existing rows
@@ -449,7 +458,7 @@ public class ReportController {
             String address = space.getParkingAddress();
             int slotsCount = space.getNumberOfSlots();
             double occupancyRate = occupancyData.getOrDefault(parkingID, 0.0);
-            int occupiedSlots = (int)Math.round(slotsCount * occupancyRate / 100);
+            int occupiedSlots = (int) Math.round(slotsCount * occupancyRate / 100);
 
             Object[] row = {
                     parkingID,
@@ -465,8 +474,7 @@ public class ReportController {
         }
 
         // Calculate overall occupancy rate
-        double overallRate = totalSlots > 0 ?
-                (double) totalOccupied / totalSlots * 100 : 0.0;
+        double overallRate = totalSlots > 0 ? (double) totalOccupied / totalSlots * 100 : 0.0;
 
         // Add a total row
         Object[] totalRow = {
@@ -483,8 +491,8 @@ public class ReportController {
      * Populates a table model with reservation data for display in a JTable.
      *
      * @param tableModel The table model to populate
-     * @param startDate Start date in format YYYY-MM-DD
-     * @param endDate End date in format YYYY-MM-DD
+     * @param startDate  Start date in format YYYY-MM-DD
+     * @param endDate    End date in format YYYY-MM-DD
      */
     public void populateReservationTable(DefaultTableModel tableModel, String startDate, String endDate) {
         // Clear existing rows
@@ -541,7 +549,7 @@ public class ReportController {
     /**
      * Creates a filename with a timestamp for reports.
      *
-     * @param prefix The prefix for the filename
+     * @param prefix    The prefix for the filename
      * @param extension The file extension (e.g., "csv")
      * @return A filename with timestamp
      */
@@ -562,7 +570,8 @@ public class ReportController {
             return "";
         }
 
-        // If the value contains a comma, double quote, or newline, enclose it in double quotes
+        // If the value contains a comma, double quote, or newline, enclose it in double
+        // quotes
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             // Replace double quotes with two double quotes
             String escapedValue = value.replace("\"", "\"\"");

@@ -22,7 +22,8 @@ import java.util.Map;
 
 /**
  * Service class for handling admin-specific operations in the ParkEasy system.
- * Provides functionality for managing parking spaces, slots, pricing, and user management.
+ * Provides functionality for managing parking spaces, slots, pricing, and user
+ * management.
  */
 public class AdminService {
 
@@ -81,7 +82,7 @@ public class AdminService {
      * @param adminID The admin's unique identifier
      * @return The Admin object if found, null otherwise
      */
-    public Admin getAdminById(int adminID) {
+    public Admin getAdminById(int adminID) { // duplicate function
         try (Connection connection = DatabaseConnection.getConnection()) {
             String query = "SELECT * FROM " + ADMIN_TABLE + " WHERE " + ADMIN_ID_COLUMN + " = ?";
 
@@ -255,7 +256,7 @@ public class AdminService {
      * Checks if a parking space has active reservations.
      *
      * @param connection Database connection
-     * @param parkingID Parking space ID
+     * @param parkingID  Parking space ID
      * @return true if has active reservations, false otherwise
      * @throws SQLException if a database error occurs
      */
@@ -281,7 +282,7 @@ public class AdminService {
      * Deletes all slots associated with a parking space.
      *
      * @param connection Database connection
-     * @param parkingID Parking space ID
+     * @param parkingID  Parking space ID
      * @throws SQLException if a database error occurs
      */
     private void deleteAssociatedSlots(Connection connection, String parkingID) throws SQLException {
@@ -296,7 +297,7 @@ public class AdminService {
      * Deletes all schedules associated with a parking space.
      *
      * @param connection Database connection
-     * @param parkingID Parking space ID
+     * @param parkingID  Parking space ID
      * @throws SQLException if a database error occurs
      */
     private void deleteAssociatedSchedules(Connection connection, String parkingID) throws SQLException {
@@ -311,7 +312,7 @@ public class AdminService {
      * Deletes the actual parking space record.
      *
      * @param connection Database connection
-     * @param parkingID Parking space ID
+     * @param parkingID  Parking space ID
      * @return true if deletion successful, false otherwise
      * @throws SQLException if a database error occurs
      */
@@ -336,7 +337,7 @@ public class AdminService {
             String query = "SELECT * FROM " + PARKING_SPACE_TABLE;
 
             try (PreparedStatement statement = connection.prepareStatement(query);
-                 ResultSet resultSet = statement.executeQuery()) {
+                    ResultSet resultSet = statement.executeQuery()) {
 
                 while (resultSet.next()) {
                     spaces.add(createParkingSpaceFromResultSet(resultSet));
@@ -364,8 +365,7 @@ public class AdminService {
                 resultSet.getInt(NUMBER_OF_SLOTS_COLUMN),
                 resultSet.getInt(MAX_DURATION_COLUMN),
                 resultSet.getString(DESCRIPTION_COLUMN),
-                resultSet.getInt(ADMIN_ID_COLUMN)
-        );
+                resultSet.getInt(ADMIN_ID_COLUMN));
     }
 
     /**
@@ -380,7 +380,7 @@ public class AdminService {
             String query = "SELECT * FROM " + USER_TABLE;
 
             try (PreparedStatement statement = connection.prepareStatement(query);
-                 ResultSet resultSet = statement.executeQuery()) {
+                    ResultSet resultSet = statement.executeQuery()) {
 
                 while (resultSet.next()) {
                     users.add(createUserFromResultSet(resultSet));
@@ -426,11 +426,12 @@ public class AdminService {
                     "COUNT(s." + SLOT_ID_COLUMN + ") AS TotalSlots, " +
                     "SUM(CASE WHEN s." + AVAILABILITY_COLUMN + " = FALSE THEN 1 ELSE 0 END) AS OccupiedSlots " +
                     "FROM " + PARKING_SPACE_TABLE + " p " +
-                    "LEFT JOIN " + PARKING_SLOT_TABLE + " s ON p." + PARKING_ID_COLUMN + " = s." + PARKING_ID_COLUMN + " " +
+                    "LEFT JOIN " + PARKING_SLOT_TABLE + " s ON p." + PARKING_ID_COLUMN + " = s." + PARKING_ID_COLUMN
+                    + " " +
                     "GROUP BY p." + PARKING_ID_COLUMN;
 
             try (PreparedStatement statement = connection.prepareStatement(query);
-                 ResultSet resultSet = statement.executeQuery()) {
+                    ResultSet resultSet = statement.executeQuery()) {
 
                 while (resultSet.next()) {
                     String parkingID = resultSet.getString(PARKING_ID_COLUMN);
@@ -438,8 +439,7 @@ public class AdminService {
                     int occupiedSlots = resultSet.getInt("OccupiedSlots");
 
                     // Calculate occupancy rate (avoid division by zero)
-                    double occupancyRate = totalSlots > 0 ?
-                            (double) occupiedSlots / totalSlots * 100 : 0.0;
+                    double occupancyRate = totalSlots > 0 ? (double) occupiedSlots / totalSlots * 100 : 0.0;
 
                     occupancyRates.put(parkingID, occupancyRate);
                 }
@@ -454,9 +454,9 @@ public class AdminService {
     /**
      * Gets revenue for a specific parking space within a specified time period.
      *
-     * @param parkingID The ID of the parking space
+     * @param parkingID   The ID of the parking space
      * @param whereClause SQL WHERE clause for time period filtering
-     * @param parameters Query parameters to be set
+     * @param parameters  Query parameters to be set
      * @return The total revenue for the specified period
      */
     private BigDecimal getRevenue(String parkingID, String whereClause, Object... parameters) {
@@ -465,7 +465,8 @@ public class AdminService {
         try (Connection connection = DatabaseConnection.getConnection()) {
             String query = "SELECT SUM(p." + AMOUNT_COLUMN + ") AS Revenue " +
                     "FROM " + PAYMENT_TABLE + " p " +
-                    "JOIN " + PARKING_RESERVATION_TABLE + " r ON p." + RESERVATION_ID_COLUMN + " = r." + RESERVATION_ID_COLUMN + " " +
+                    "JOIN " + PARKING_RESERVATION_TABLE + " r ON p." + RESERVATION_ID_COLUMN + " = r."
+                    + RESERVATION_ID_COLUMN + " " +
                     "JOIN " + PARKING_SLOT_TABLE + " s ON r." + SLOT_ID_COLUMN + " = s." + SLOT_ID_COLUMN + " " +
                     "WHERE s." + PARKING_ID_COLUMN + " = ? " + whereClause;
 
@@ -494,7 +495,8 @@ public class AdminService {
      * Gets daily revenue for a specific parking space.
      *
      * @param parkingID The ID of the parking space
-     * @param date The date for which to calculate revenue (in format YYYY-MM-DD)
+     * @param date      The date for which to calculate revenue (in format
+     *                  YYYY-MM-DD)
      * @return The total revenue for the specified date
      */
     public BigDecimal getDailyRevenue(String parkingID, String date) {
@@ -505,8 +507,8 @@ public class AdminService {
      * Gets monthly revenue for a specific parking space.
      *
      * @param parkingID The ID of the parking space
-     * @param year The year for which to calculate revenue
-     * @param month The month for which to calculate revenue (1-12)
+     * @param year      The year for which to calculate revenue
+     * @param month     The month for which to calculate revenue (1-12)
      * @return The total revenue for the specified month
      */
     public BigDecimal getMonthlyRevenueForSpace(String parkingID, int year, int month) {
@@ -529,12 +531,13 @@ public class AdminService {
      * Updates the pricing for a parking space.
      *
      * @param parkingID The ID of the parking space
-     * @param newPrice The new price per hour/day
+     * @param newPrice  The new price per hour/day
      * @return true if update successful, false otherwise
      */
     public boolean updateParkingPrice(String parkingID, BigDecimal newPrice) {
         try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "UPDATE " + PARKING_SPACE_TABLE + " SET " + COST_OF_PARKING_COLUMN + " = ? WHERE " + PARKING_ID_COLUMN + " = ?";
+            String query = "UPDATE " + PARKING_SPACE_TABLE + " SET " + COST_OF_PARKING_COLUMN + " = ? WHERE "
+                    + PARKING_ID_COLUMN + " = ?";
 
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 statement.setBigDecimal(1, newPrice);
@@ -553,7 +556,7 @@ public class AdminService {
     /**
      * Creates new parking slots for a parking space.
      *
-     * @param parkingID The ID of the parking space
+     * @param parkingID     The ID of the parking space
      * @param numberOfSlots The number of slots to create
      * @return true if creation successful, false otherwise
      */
@@ -582,7 +585,7 @@ public class AdminService {
      * Gets the next available slot number for a parking space.
      *
      * @param connection Database connection
-     * @param parkingID Parking space ID
+     * @param parkingID  Parking space ID
      * @return Next available slot number
      * @throws SQLException if a database error occurs
      */
@@ -606,14 +609,15 @@ public class AdminService {
     /**
      * Inserts new parking slots.
      *
-     * @param connection Database connection
-     * @param parkingID Parking space ID
+     * @param connection         Database connection
+     * @param parkingID          Parking space ID
      * @param startingSlotNumber First slot number to use
-     * @param numberOfSlots Number of slots to create
+     * @param numberOfSlots      Number of slots to create
      * @return true if all inserts were successful, false otherwise
      * @throws SQLException if a database error occurs
      */
-    private boolean insertNewSlots(Connection connection, String parkingID, int startingSlotNumber, int numberOfSlots) throws SQLException {
+    private boolean insertNewSlots(Connection connection, String parkingID, int startingSlotNumber, int numberOfSlots)
+            throws SQLException {
         String insertQuery = "INSERT INTO " + PARKING_SLOT_TABLE + " (" + SLOT_NUMBER_COLUMN + ", " +
                 AVAILABILITY_COLUMN + ", " + PARKING_ID_COLUMN + ") VALUES (?, TRUE, ?)";
 
@@ -652,12 +656,13 @@ public class AdminService {
     /**
      * Updates the total slot count for a parking space.
      *
-     * @param connection Database connection
-     * @param parkingID Parking space ID
+     * @param connection      Database connection
+     * @param parkingID       Parking space ID
      * @param additionalSlots Number of additional slots
      * @throws SQLException if a database error occurs
      */
-    private void updateTotalSlotCount(Connection connection, String parkingID, int additionalSlots) throws SQLException {
+    private void updateTotalSlotCount(Connection connection, String parkingID, int additionalSlots)
+            throws SQLException {
         String updateSpaceQuery = "UPDATE " + PARKING_SPACE_TABLE + " SET " +
                 NUMBER_OF_SLOTS_COLUMN + " = " + NUMBER_OF_SLOTS_COLUMN + " + ? WHERE " +
                 PARKING_ID_COLUMN + " = ?";
@@ -725,7 +730,7 @@ public class AdminService {
     /**
      * Gets monthly revenue statistics for all parking spaces.
      *
-     * @param year The year for which to calculate revenue
+     * @param year  The year for which to calculate revenue
      * @param month The month for which to calculate revenue (1-12)
      * @return Map with parking space IDs as keys and monthly revenue as values
      */
@@ -735,7 +740,8 @@ public class AdminService {
         try (Connection connection = DatabaseConnection.getConnection()) {
             String query = "SELECT s." + PARKING_ID_COLUMN + ", SUM(p." + AMOUNT_COLUMN + ") AS MonthlyRevenue " +
                     "FROM " + PAYMENT_TABLE + " p " +
-                    "JOIN " + PARKING_RESERVATION_TABLE + " r ON p." + RESERVATION_ID_COLUMN + " = r." + RESERVATION_ID_COLUMN + " " +
+                    "JOIN " + PARKING_RESERVATION_TABLE + " r ON p." + RESERVATION_ID_COLUMN + " = r."
+                    + RESERVATION_ID_COLUMN + " " +
                     "JOIN " + PARKING_SLOT_TABLE + " s ON r." + SLOT_ID_COLUMN + " = s." + SLOT_ID_COLUMN + " " +
                     "WHERE YEAR(p." + PAYMENT_DATE_COLUMN + ") = ? AND MONTH(p." + PAYMENT_DATE_COLUMN + ") = ? " +
                     "GROUP BY s." + PARKING_ID_COLUMN;
@@ -798,8 +804,7 @@ public class AdminService {
                 resultSet.getInt(SLOT_ID_COLUMN),
                 resultSet.getString(SLOT_NUMBER_COLUMN),
                 resultSet.getBoolean(AVAILABILITY_COLUMN),
-                resultSet.getString(PARKING_ID_COLUMN)
-        );
+                resultSet.getString(PARKING_ID_COLUMN));
     }
 
     /**
@@ -812,7 +817,8 @@ public class AdminService {
         List<ParkingSlot> slots = new ArrayList<>();
 
         try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT * FROM " + PARKING_SLOT_TABLE + " WHERE " + PARKING_ID_COLUMN + " = ? ORDER BY CAST(" + SLOT_NUMBER_COLUMN + " AS UNSIGNED)";
+            String query = "SELECT * FROM " + PARKING_SLOT_TABLE + " WHERE " + PARKING_ID_COLUMN + " = ? ORDER BY CAST("
+                    + SLOT_NUMBER_COLUMN + " AS UNSIGNED)";
 
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 statement.setString(1, parkingID);
@@ -833,13 +839,14 @@ public class AdminService {
     /**
      * Updates the availability of a parking slot.
      *
-     * @param slotID The ID of the parking slot
+     * @param slotID       The ID of the parking slot
      * @param availability The new availability status
      * @return true if update successful, false otherwise
      */
     public boolean updateSlotAvailability(int slotID, boolean availability) {
         try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "UPDATE " + PARKING_SLOT_TABLE + " SET " + AVAILABILITY_COLUMN + " = ? WHERE " + SLOT_ID_COLUMN + " = ?";
+            String query = "UPDATE " + PARKING_SLOT_TABLE + " SET " + AVAILABILITY_COLUMN + " = ? WHERE "
+                    + SLOT_ID_COLUMN + " = ?";
 
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 statement.setBoolean(1, availability);
@@ -866,12 +873,13 @@ public class AdminService {
         try (Connection connection = DatabaseConnection.getConnection()) {
             String query = "SELECT s." + PARKING_ID_COLUMN + ", SUM(p." + AMOUNT_COLUMN + ") AS TotalRevenue " +
                     "FROM " + PAYMENT_TABLE + " p " +
-                    "JOIN " + PARKING_RESERVATION_TABLE + " r ON p." + RESERVATION_ID_COLUMN + " = r." + RESERVATION_ID_COLUMN + " " +
+                    "JOIN " + PARKING_RESERVATION_TABLE + " r ON p." + RESERVATION_ID_COLUMN + " = r."
+                    + RESERVATION_ID_COLUMN + " " +
                     "JOIN " + PARKING_SLOT_TABLE + " s ON r." + SLOT_ID_COLUMN + " = s." + SLOT_ID_COLUMN + " " +
                     "GROUP BY s." + PARKING_ID_COLUMN;
 
             try (PreparedStatement statement = connection.prepareStatement(query);
-                 ResultSet resultSet = statement.executeQuery()) {
+                    ResultSet resultSet = statement.executeQuery()) {
 
                 while (resultSet.next()) {
                     String parkingID = resultSet.getString(PARKING_ID_COLUMN);
@@ -891,7 +899,7 @@ public class AdminService {
      * Handles a SQLException by logging it.
      *
      * @param message Error message prefix
-     * @param e SQLException that was thrown
+     * @param e       SQLException that was thrown
      */
     private void handleSQLException(String message, SQLException e) {
         System.err.println(message + ": " + e.getMessage());

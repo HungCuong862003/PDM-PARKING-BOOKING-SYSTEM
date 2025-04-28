@@ -301,4 +301,26 @@ public class PaymentRepository {
 
         return BigDecimal.ZERO;
     }
+
+    public BigDecimal getTotalPaymentsByUser(int currentUserId, String sql) {
+        BigDecimal total = BigDecimal.ZERO; // Initialize total to zero
+
+        try (Connection connection = DatabaseConnection.getConnection();
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
+            preparedStatement.setInt(1, currentUserId);
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    total = resultSet.getBigDecimal("TotalAmount");
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error calculating total payments by user: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return total;
+    }
 }

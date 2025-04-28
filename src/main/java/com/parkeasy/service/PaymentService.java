@@ -16,7 +16,8 @@ import java.util.logging.Logger;
 
 /**
  * Service class for handling payment operations in the ParkEasy system.
- * Provides functionality for creating, retrieving, updating, and deleting payments,
+ * Provides functionality for creating, retrieving, updating, and deleting
+ * payments,
  * as well as handling card operations and calculating costs.
  */
 public class PaymentService {
@@ -32,6 +33,7 @@ public class PaymentService {
 
     /**
      * Constructor for PaymentService
+     * 
      * @param paymentRepository The payment repository for database operations
      */
     public PaymentService(PaymentRepository paymentRepository) {
@@ -39,8 +41,14 @@ public class PaymentService {
         this.cardRepository = new CardRepository();
     }
 
+    public PaymentService() { // constructor for default repository
+        this.paymentRepository = new PaymentRepository();
+        this.cardRepository = new CardRepository();
+    }
+
     /**
      * Inserts a new payment into the database
+     * 
      * @param payment The payment to insert
      * @return boolean indicating success or failure
      */
@@ -60,6 +68,7 @@ public class PaymentService {
 
     /**
      * Validates payment data
+     * 
      * @param payment The payment to validate
      * @return boolean indicating if the payment is valid
      */
@@ -89,6 +98,7 @@ public class PaymentService {
 
     /**
      * Gets a payment by its ID
+     * 
      * @param paymentID The ID of the payment
      * @return Payment object if found, null otherwise
      */
@@ -108,6 +118,7 @@ public class PaymentService {
 
     /**
      * Gets all payments by reservation ID
+     * 
      * @param reservationID The ID of the reservation
      * @return List of payments for the reservation
      */
@@ -127,11 +138,12 @@ public class PaymentService {
 
     /**
      * Gets all payments in the system
+     * 
      * @return List of all payments
      */
     public List<Payment> getAllPayments() {
         try {
-            return paymentRepository.getAllPayments();
+            return paymentRepository.getListOfAllPayments();
         } catch (Exception e) {
             handleException("Error retrieving all payments", e);
             return new ArrayList<>();
@@ -140,6 +152,7 @@ public class PaymentService {
 
     /**
      * Updates a payment's information
+     * 
      * @param payment The updated payment
      * @return boolean indicating success or failure
      */
@@ -166,6 +179,7 @@ public class PaymentService {
 
     /**
      * Deletes a payment by its ID
+     * 
      * @param paymentID The ID of the payment to delete
      * @return boolean indicating success or failure
      */
@@ -192,6 +206,7 @@ public class PaymentService {
 
     /**
      * Deletes all payments associated with a reservation
+     * 
      * @param reservationID The ID of the reservation
      * @return boolean indicating success or failure
      */
@@ -211,10 +226,12 @@ public class PaymentService {
 
     /**
      * Creates a new payment for a reservation
+     * 
      * @param reservationID The ID of the reservation
      * @param paymentMethod The payment method used
-     * @param amount The payment amount
-     * @param cardNumber The card number used for payment (can be null for non-card payments)
+     * @param amount        The payment amount
+     * @param cardNumber    The card number used for payment (can be null for
+     *                      non-card payments)
      * @return The ID of the created payment, or -1 if failed
      */
     public int createPayment(int reservationID, String paymentMethod, BigDecimal amount, String cardNumber) {
@@ -267,6 +284,7 @@ public class PaymentService {
 
     /**
      * Checks if a card is registered in the system
+     * 
      * @param cardNumber The card number to check
      * @return boolean indicating if the card is registered
      */
@@ -276,7 +294,7 @@ public class PaymentService {
         }
 
         try {
-            Card card = cardRepository.getCardByNumber(cardNumber);
+            Card card = cardRepository.getCardByCardNumber(cardNumber);
             return card != null;
         } catch (Exception e) {
             handleException("Error checking if card is registered", e);
@@ -286,8 +304,9 @@ public class PaymentService {
 
     /**
      * Handles exceptions by logging them
+     * 
      * @param message The error message
-     * @param e The exception that occurred
+     * @param e       The exception that occurred
      */
     private void handleException(String message, Exception e) {
         LOGGER.log(Level.SEVERE, message, e);
@@ -300,4 +319,77 @@ public class PaymentService {
             LOGGER.log(Level.SEVERE, "Error Code: " + sqlEx.getErrorCode());
         }
     }
+
+    public BigDecimal getTotalPaymentsByUser(int currentUserId) {
+        String sql = "SELECT SUM(amount) FROM payments WHERE user_id = ?";
+        try {
+            return paymentRepository.getTotalPaymentsByUser(currentUserId, sql).setScale(2, RoundingMode.HALF_UP);
+        } catch (Exception e) {
+            handleException("Error retrieving total payments by user", e);
+            return BigDecimal.ZERO;
+        }
+    }
+
+    public boolean addCard(Card card) {
+        if (card == null || card.getCardNumber() == null || card.getCardHolder() == null) {
+            System.err.println("Invalid card data provided");
+            return false;
+        }
+
+        try {
+            return cardRepository.insertCard(card);
+        } catch (Exception e) {
+            handleException("Error adding card", e);
+            return false;
+        }
+    }
+
+    public List<Card> getListOfCardsByUserId(int currentUserId) {
+        try {
+            return cardRepository.getListOfCardsByUserId(currentUserId);
+        } catch (Exception e) {
+            handleException("Error retrieving list of cards by user ID", e);
+            return new ArrayList<>();
+        }
+    }
+
+    public Card getListOfCardByNumber(String cardNumber) {
+        if (cardNumber == null || cardNumber.trim().isEmpty()) {
+            System.err.println("Invalid card number provided");
+            return null;
+        }
+
+        try {
+            return cardRepository.getCardByCardNumber(cardNumber);
+        } catch (Exception e) {
+            handleException("Error retrieving card by number", e);
+            return null;
+        }
+    }
+
+    public boolean removeCard(String cardNumber) {
+        if (cardNumber == null || cardNumber.trim().isEmpty()) {
+            System.err.println("Invalid card number provided");
+            return false;
+        }
+
+        try {
+            return cardRepository.deleteCard(cardNumber);
+        } catch (Exception e) {
+            handleException("Error removing card", e);
+            return false;
+        }
+    }
+
+    // method to calculate the cost of parking based on duration and rate
+    public BigDecimal calculateCost(BigDecimal costOfParking, long durationInMinutes) {
+
+        if (costOfParking == null || durationInMinutes <= 0) {
+            System.err.println("Invalid cost or duration provided");
+            return BigDecimal.ZERO;
+        }
+
+        return costOfParking.multiply(BigDecimal.valueOf(durationInMinutes)).setScale(2, RoundingMode.HALF_UP);
+    }
+
 }
