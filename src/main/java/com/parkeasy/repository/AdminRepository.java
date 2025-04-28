@@ -5,152 +5,213 @@ import main.java.com.parkeasy.util.DatabaseConnection;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
+/**
+ * Repository class for Admin entity.
+ * Handles database operations related to administrators.
+ */
 public class AdminRepository {
 
-    // Assuming we have a database connection established
-    // private Connection connection;
-    private PreparedStatement preparedStatement;
-    private ResultSet resultSet;
-    // private Statement statement;
-    private String sql;
-
-    private Connection databaseConnection;
-
+    /**
+     * Saves a new admin to the database.
+     *
+     * @param admin The admin object to save
+     */
     public void save(Admin admin) {
-        databaseConnection = DatabaseConnection.getConnection();
-        sql = "INSERT INTO admin (adminName, phone, email, password) VALUES (?, ?, ?, ?)";
-        try {
-            preparedStatement = databaseConnection.prepareStatement(sql);
+        String sql = "INSERT INTO admin (adminName, phone, email, password) VALUES (?, ?, ?, ?)";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
             preparedStatement.setString(1, admin.getAdminName());
             preparedStatement.setString(2, admin.getPhone());
             preparedStatement.setString(3, admin.getEmail());
             preparedStatement.setString(4, admin.getPassword());
             preparedStatement.executeUpdate();
-        } catch (Exception e) {
+
+        } catch (SQLException e) {
+            System.err.println("Error saving admin: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            DatabaseConnection.closePreparedStatement(preparedStatement);
-            DatabaseConnection.closeConnection(databaseConnection);
         }
     }
 
-    // Method to delete an admin by ID
+    /**
+     * Deletes an admin by ID.
+     *
+     * @param adminID The ID of the admin to delete
+     */
     public void deleteById(int adminID) {
-        databaseConnection = DatabaseConnection.getConnection();
-        sql = "DELETE FROM admin WHERE adminID = ?";
-        try {
-            preparedStatement = databaseConnection.prepareStatement(sql);
+        String sql = "DELETE FROM admin WHERE adminID = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
             preparedStatement.setInt(1, adminID);
             preparedStatement.executeUpdate();
-        } catch (Exception e) {
+
+        } catch (SQLException e) {
+            System.err.println("Error deleting admin: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            DatabaseConnection.closePreparedStatement(preparedStatement);
-            DatabaseConnection.closeConnection(databaseConnection);
         }
     }
 
-    // Method to get an admin by ID
+    /**
+     * Updates an existing admin.
+     *
+     * @param admin The admin object with updated information
+     */
     public void update(Admin admin) {
-        databaseConnection = DatabaseConnection.getConnection();
-        sql = "UPDATE admin SET adminName = ?, phone = ?, email = ?, password = ? WHERE adminID = ?";
-        try {
-            preparedStatement = databaseConnection.prepareStatement(sql);
+        String sql = "UPDATE admin SET adminName = ?, phone = ?, email = ?, password = ? WHERE adminID = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
             preparedStatement.setString(1, admin.getAdminName());
             preparedStatement.setString(2, admin.getPhone());
             preparedStatement.setString(3, admin.getEmail());
             preparedStatement.setString(4, admin.getPassword());
             preparedStatement.setInt(5, admin.getAdminID());
             preparedStatement.executeUpdate();
-        } catch (Exception e) {
+
+        } catch (SQLException e) {
+            System.err.println("Error updating admin: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            DatabaseConnection.closePreparedStatement(preparedStatement);
-            DatabaseConnection.closeConnection(databaseConnection);
         }
     }
 
+    /**
+     * Gets an admin by email.
+     *
+     * @param email The email of the admin to retrieve
+     * @return The admin if found, null otherwise
+     */
     public Admin getAdminByEmail(String email) {
-        databaseConnection = DatabaseConnection.getConnection();
-        sql = "SELECT * FROM admin WHERE email = ?";
-        try {
-            preparedStatement = databaseConnection.prepareStatement(sql);
+        String sql = "SELECT * FROM admin WHERE email = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
             preparedStatement.setString(1, email);
-            resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                Admin admin = new Admin();
-                admin.setAdminID(resultSet.getInt("adminID"));
-                admin.setAdminName(resultSet.getString("adminName"));
-                admin.setPhone(resultSet.getString("phone"));
-                admin.setEmail(resultSet.getString("email"));
-                admin.setPassword(resultSet.getString("password"));
-                return admin;
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    Admin admin = new Admin();
+                    admin.setAdminID(resultSet.getInt("adminID"));
+                    admin.setAdminName(resultSet.getString("adminName"));
+                    admin.setPhone(resultSet.getString("phone"));
+                    admin.setEmail(resultSet.getString("email"));
+                    admin.setPassword(resultSet.getString("password"));
+                    return admin;
+                }
             }
-        } catch (Exception e) {
+
+        } catch (SQLException e) {
+            System.err.println("Error retrieving admin by email: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            DatabaseConnection.closePreparedStatement(preparedStatement);
-            DatabaseConnection.closeConnection(databaseConnection);
         }
+
         return null;
     }
 
-    public Object getAdminByPhone(String phone) {
-        databaseConnection = DatabaseConnection.getConnection();
-        sql = "SELECT * FROM admin WHERE phone = ?";
-        try {
-            preparedStatement = databaseConnection.prepareStatement(sql);
+    /**
+     * Gets an admin by phone number.
+     *
+     * @param phone The phone number of the admin to retrieve
+     * @return The admin if found, null otherwise
+     */
+    public Admin getAdminByPhone(String phone) {
+        String sql = "SELECT * FROM admin WHERE phone = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
             preparedStatement.setString(1, phone);
-            resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                Admin admin = new Admin();
-                admin.setAdminID(resultSet.getInt("adminID"));
-                admin.setAdminName(resultSet.getString("adminName"));
-                admin.setPhone(resultSet.getString("phone"));
-                admin.setEmail(resultSet.getString("email"));
-                admin.setPassword(resultSet.getString("password"));
-                return admin;
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    Admin admin = new Admin();
+                    admin.setAdminID(resultSet.getInt("adminID"));
+                    admin.setAdminName(resultSet.getString("adminName"));
+                    admin.setPhone(resultSet.getString("phone"));
+                    admin.setEmail(resultSet.getString("email"));
+                    admin.setPassword(resultSet.getString("password"));
+                    return admin;
+                }
             }
-        } catch (Exception e) {
+
+        } catch (SQLException e) {
+            System.err.println("Error retrieving admin by phone: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            DatabaseConnection.closePreparedStatement(preparedStatement);
-            DatabaseConnection.closeConnection(databaseConnection);
         }
+
         return null;
     }
 
+    /**
+     * Gets an admin by ID.
+     *
+     * @param adminID The ID of the admin to retrieve
+     * @return The admin if found, null otherwise
+     */
     public Admin getAdminById(int adminID) {
-        databaseConnection = DatabaseConnection.getConnection();
-        sql = "SELECT * FROM admin WHERE adminID = ?";
-        try {
-            preparedStatement = databaseConnection.prepareStatement(sql);
+        String sql = "SELECT * FROM admin WHERE adminID = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
             preparedStatement.setInt(1, adminID);
-            resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    Admin admin = new Admin();
+                    admin.setAdminID(resultSet.getInt("adminID"));
+                    admin.setAdminName(resultSet.getString("adminName"));
+                    admin.setPhone(resultSet.getString("phone"));
+                    admin.setEmail(resultSet.getString("email"));
+                    admin.setPassword(resultSet.getString("password"));
+                    return admin;
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error retrieving admin by ID: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    /**
+     * Gets all admins from the database.
+     *
+     * @return A list of all admins
+     */
+    public List<Admin> getAllAdmins() {
+        String sql = "SELECT * FROM admin";
+        List<Admin> admins = new ArrayList<>();
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql);
+             ResultSet resultSet = preparedStatement.executeQuery()) {
+
+            while (resultSet.next()) {
                 Admin admin = new Admin();
                 admin.setAdminID(resultSet.getInt("adminID"));
                 admin.setAdminName(resultSet.getString("adminName"));
                 admin.setPhone(resultSet.getString("phone"));
                 admin.setEmail(resultSet.getString("email"));
                 admin.setPassword(resultSet.getString("password"));
-                return admin;
+                admins.add(admin);
             }
-        } catch (Exception e) {
+
+        } catch (SQLException e) {
+            System.err.println("Error retrieving all admins: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            DatabaseConnection.closePreparedStatement(preparedStatement);
-            DatabaseConnection.closeConnection(databaseConnection);
         }
-        return null;
-    }
 
-    // test
-    public static void main(String[] args) {
-        AdminRepository adminRepository = new AdminRepository();
-        Admin admin = new Admin(1, "John Doe", "1234567890", "asdf@fas.ac", "password123");
-
-        adminRepository.save(admin);
+        return admins;
     }
 }

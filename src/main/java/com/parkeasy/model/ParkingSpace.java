@@ -1,11 +1,13 @@
 package main.java.com.parkeasy.model;
 
+import java.math.BigDecimal;
+
 public class ParkingSpace {
     // primary key
     private String parkingID;
     // other attributes
     private String parkingAddress;
-    private float costOfParking;
+    private BigDecimal costOfParking;
     private int numberOfSlots;
     private int maxDuration;
     private String description;
@@ -17,7 +19,7 @@ public class ParkingSpace {
             String description, int adminID) {
         this.parkingID = parkingID;
         this.parkingAddress = parkingAddress;
-        this.costOfParking = costOfParking;
+        this.costOfParking = BigDecimal.valueOf(costOfParking);
         this.numberOfSlots = numberOfSlots;
         this.maxDuration = maxDuration;
         this.description = description;
@@ -27,6 +29,7 @@ public class ParkingSpace {
     public String getParkingID() {
         return parkingID;
     }
+
 
     public void setParkingID(String parkingID) {
         this.parkingID = parkingID;
@@ -40,11 +43,11 @@ public class ParkingSpace {
         this.parkingAddress = parkingAddress;
     }
 
-    public float getCostOfParking() {
+    public BigDecimal getCostOfParking() {
         return costOfParking;
     }
 
-    public void setCostOfParking(float costOfParking) {
+    public void setCostOfParking(BigDecimal costOfParking) {
         this.costOfParking = costOfParking;
     }
 

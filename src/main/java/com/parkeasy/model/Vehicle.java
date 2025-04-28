@@ -11,6 +11,10 @@ public class Vehicle {
         this.userID = userID;
     }
 
+    // Default constructor
+    public Vehicle() {
+    }
+
     public String getVehicleID() {
         return vehicleID;
     }
