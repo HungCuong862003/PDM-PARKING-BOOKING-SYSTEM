@@ -21,11 +21,11 @@ public class ParkingSpaceRepository {
         String sql = "INSERT INTO parkingSpace (ParkingID, ParkingAddress, CostOfParking, NumberOfSlots, MaxDuration, Description, AdminID) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingSpace.getParkingID());
             preparedStatement.setString(2, parkingSpace.getParkingAddress());
-            preparedStatement.setFloat(3, parkingSpace.getCostOfParking());
+            preparedStatement.setFloat(3, parkingSpace.getCostOfParking().floatValue());
             preparedStatement.setInt(4, parkingSpace.getNumberOfSlots());
             preparedStatement.setInt(5, parkingSpace.getMaxDuration());
             preparedStatement.setString(6, parkingSpace.getDescription());
@@ -49,7 +49,7 @@ public class ParkingSpaceRepository {
         String sql = "SELECT * FROM parkingSpace WHERE ParkingID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
 
@@ -62,8 +62,7 @@ public class ParkingSpaceRepository {
                             resultSet.getInt("NumberOfSlots"),
                             resultSet.getInt("MaxDuration"),
                             resultSet.getString("Description"),
-                            resultSet.getInt("AdminID")
-                    );
+                            resultSet.getInt("AdminID"));
                 }
             }
 
@@ -80,13 +79,13 @@ public class ParkingSpaceRepository {
      *
      * @return A list of all parking spaces
      */
-    public List<ParkingSpace> getAllParkingSpaces() {
+    public List<ParkingSpace> getListOfAllParkingSpaces() {
         List<ParkingSpace> parkingSpaces = new ArrayList<>();
         String sql = "SELECT * FROM parkingSpace";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery(sql)) {
 
             while (resultSet.next()) {
                 parkingSpaces.add(new ParkingSpace(
@@ -96,8 +95,7 @@ public class ParkingSpaceRepository {
                         resultSet.getInt("NumberOfSlots"),
                         resultSet.getInt("MaxDuration"),
                         resultSet.getString("Description"),
-                        resultSet.getInt("AdminID")
-                ));
+                        resultSet.getInt("AdminID")));
             }
 
         } catch (SQLException e) {
@@ -114,12 +112,12 @@ public class ParkingSpaceRepository {
      * @param adminID The ID of the admin
      * @return A list of parking spaces managed by the specified admin
      */
-    public List<ParkingSpace> getParkingSpacesByAdminId(int adminID) {
+    public List<ParkingSpace> getListOfParkingSpacesByAdminId(int adminID) {
         List<ParkingSpace> parkingSpaces = new ArrayList<>();
         String sql = "SELECT * FROM parkingSpace WHERE AdminID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, adminID);
 
@@ -132,8 +130,7 @@ public class ParkingSpaceRepository {
                             resultSet.getInt("NumberOfSlots"),
                             resultSet.getInt("MaxDuration"),
                             resultSet.getString("Description"),
-                            resultSet.getInt("AdminID")
-                    ));
+                            resultSet.getInt("AdminID")));
                 }
             }
 
@@ -154,7 +151,7 @@ public class ParkingSpaceRepository {
         String sql = "DELETE FROM parkingSpace WHERE ParkingID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
             preparedStatement.executeUpdate();
@@ -168,17 +165,17 @@ public class ParkingSpaceRepository {
     /**
      * Updates a parking space's information.
      *
-     * @param parkingID The ID of the parking space to update
+     * @param parkingID    The ID of the parking space to update
      * @param parkingSpace The updated parking space information
      */
     public void updateParkingSpaceById(String parkingID, ParkingSpace parkingSpace) {
         String sql = "UPDATE parkingSpace SET ParkingAddress = ?, CostOfParking = ?, NumberOfSlots = ?, MaxDuration = ?, Description = ?, AdminID = ? WHERE ParkingID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingSpace.getParkingAddress());
-            preparedStatement.setFloat(2, parkingSpace.getCostOfParking());
+            preparedStatement.setFloat(2, parkingSpace.getCostOfParking().floatValue());
             preparedStatement.setInt(3, parkingSpace.getNumberOfSlots());
             preparedStatement.setInt(4, parkingSpace.getMaxDuration());
             preparedStatement.setString(5, parkingSpace.getDescription());
@@ -202,8 +199,8 @@ public class ParkingSpaceRepository {
         String sql = "SELECT COUNT(*) FROM parkingSpace";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery(sql)) {
 
             if (resultSet.next()) {
                 return resultSet.getInt(1);
@@ -223,11 +220,11 @@ public class ParkingSpaceRepository {
      * @param parkingID The ID of the parking space to check
      * @return true if the parking space exists, false otherwise
      */
-    public boolean parkingSpaceExists(String parkingID) {
+    public boolean isParkingSpaceExists(String parkingID) {
         String sql = "SELECT COUNT(*) FROM parkingSpace WHERE ParkingID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
 

@@ -22,7 +22,7 @@ public class ParkingSlotRepository {
         String sql = "INSERT INTO parkingSlot (SlotID, SlotNumber, Availability, ParkingID) VALUES (?, ?, ?, ?)";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, parkingSlot.getSlotID());
             preparedStatement.setString(2, parkingSlot.getSlotNumber());
@@ -49,7 +49,7 @@ public class ParkingSlotRepository {
         String sql = "SELECT * FROM parkingSlot WHERE SlotID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, slotID);
 
@@ -73,12 +73,12 @@ public class ParkingSlotRepository {
      * @param parkingID The ID of the parking space
      * @return A list of parking slots belonging to the specified parking space
      */
-    public List<ParkingSlot> getParkingSlotsByParkingSpaceId(String parkingID) {
+    public List<ParkingSlot> getListOfParkingSlotsByParkingSpaceId(String parkingID) {
         List<ParkingSlot> parkingSlots = new ArrayList<>();
         String sql = "SELECT * FROM parkingSlot WHERE ParkingID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
 
@@ -100,14 +100,15 @@ public class ParkingSlotRepository {
      * Retrieves all available parking slots for a specific parking space.
      *
      * @param parkingID The ID of the parking space
-     * @return A list of available parking slots belonging to the specified parking space
+     * @return A list of available parking slots belonging to the specified parking
+     *         space
      */
     public List<ParkingSlot> getAvailableParkingSlotsByParkingSpaceId(String parkingID) {
         List<ParkingSlot> parkingSlots = new ArrayList<>();
         String sql = "SELECT * FROM parkingSlot WHERE ParkingID = ? AND Availability = true";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
 
@@ -135,7 +136,7 @@ public class ParkingSlotRepository {
         String sql = "DELETE FROM parkingSlot WHERE SlotID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, slotID);
 
@@ -152,7 +153,7 @@ public class ParkingSlotRepository {
     /**
      * Updates a parking slot's information by its ID.
      *
-     * @param slotID The ID of the parking slot to update
+     * @param slotID      The ID of the parking slot to update
      * @param parkingSlot The updated parking slot information
      * @return true if update was successful, false otherwise
      */
@@ -160,7 +161,7 @@ public class ParkingSlotRepository {
         String sql = "UPDATE parkingSlot SET SlotNumber = ?, Availability = ?, ParkingID = ? WHERE SlotID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingSlot.getSlotNumber());
             preparedStatement.setBoolean(2, parkingSlot.isAvailability());
@@ -182,7 +183,7 @@ public class ParkingSlotRepository {
      *
      * This method is used by ReservationService to update slot availability.
      *
-     * @param slotID The ID of the parking slot
+     * @param slotID       The ID of the parking slot
      * @param availability The new availability status
      * @return true if update was successful, false otherwise
      */
@@ -190,7 +191,7 @@ public class ParkingSlotRepository {
         String sql = "UPDATE parkingSlot SET Availability = ? WHERE SlotID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setBoolean(1, availability);
             preparedStatement.setInt(2, slotID);
@@ -207,29 +208,31 @@ public class ParkingSlotRepository {
 
     /**
      * Updates the availability status of a parking slot.
-     * This is an alias for updateParkingSlotAvailability to maintain compatibility with ReservationService.
+     * This is an alias for updateParkingSlotAvailability to maintain compatibility
+     * with ReservationService.
      *
-     * @param slotID The ID of the parking slot
+     * @param slotID       The ID of the parking slot
      * @param availability The new availability status
      * @return true if update was successful, false otherwise
      */
     public boolean updateSlotAvailability(int slotID, boolean availability) {
         return updateParkingSlotAvailability(slotID, availability);
-    }
+    }// is that necessary?
 
     /**
      * Retrieves slot IDs for a specific parking space.
-     * This method is used by ReservationService to get all slot IDs for a parking space.
+     * This method is used by ReservationService to get all slot IDs for a parking
+     * space.
      *
      * @param parkingID The ID of the parking space
      * @return A list of slot IDs belonging to the specified parking space
      */
-    public List<Integer> getSlotIdsByParkingId(String parkingID) {
+    public List<Integer> getListOfSlotIdsByParkingId(String parkingID) {
         List<Integer> slotIDs = new ArrayList<>();
         String sql = "SELECT SlotID FROM parkingSlot WHERE ParkingID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
 
@@ -249,7 +252,8 @@ public class ParkingSlotRepository {
 
     /**
      * Retrieves the parking ID for a specific slot.
-     * This method is used by ReservationService to get the parking space ID for a slot.
+     * This method is used by ReservationService to get the parking space ID for a
+     * slot.
      *
      * @param slotID The ID of the parking slot
      * @return The parking space ID, or null if not found
@@ -258,7 +262,7 @@ public class ParkingSlotRepository {
         String sql = "SELECT ParkingID FROM parkingSlot WHERE SlotID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, slotID);
 
@@ -286,7 +290,7 @@ public class ParkingSlotRepository {
         String sql = "SELECT COUNT(*) FROM parkingSlot WHERE ParkingID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
 
@@ -314,7 +318,7 @@ public class ParkingSlotRepository {
         String sql = "SELECT COUNT(*) FROM parkingSlot WHERE ParkingID = ? AND Availability = true";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
 
@@ -337,13 +341,13 @@ public class ParkingSlotRepository {
      *
      * @return A list of all parking slots
      */
-    public List<ParkingSlot> getAllParkingSlots() {
+    public List<ParkingSlot> getListOfAllParkingSlots() {
         List<ParkingSlot> parkingSlots = new ArrayList<>();
         String sql = "SELECT * FROM parkingSlot";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery(sql)) {
 
             while (resultSet.next()) {
                 parkingSlots.add(extractParkingSlotFromResultSet(resultSet));

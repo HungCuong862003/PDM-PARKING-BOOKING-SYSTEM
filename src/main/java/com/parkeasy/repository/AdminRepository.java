@@ -20,11 +20,11 @@ public class AdminRepository {
      *
      * @param admin The admin object to save
      */
-    public void save(Admin admin) {
+    public void saveAdmin(Admin admin) {
         String sql = "INSERT INTO admin (adminName, phone, email, password) VALUES (?, ?, ?, ?)";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, admin.getAdminName());
             preparedStatement.setString(2, admin.getPhone());
@@ -43,11 +43,11 @@ public class AdminRepository {
      *
      * @param adminID The ID of the admin to delete
      */
-    public void deleteById(int adminID) {
+    public void deleteAdminById(int adminID) {
         String sql = "DELETE FROM admin WHERE adminID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, adminID);
             preparedStatement.executeUpdate();
@@ -63,11 +63,11 @@ public class AdminRepository {
      *
      * @param admin The admin object with updated information
      */
-    public void update(Admin admin) {
+    public void updateAdmin(Admin admin) {
         String sql = "UPDATE admin SET adminName = ?, phone = ?, email = ?, password = ? WHERE adminID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, admin.getAdminName());
             preparedStatement.setString(2, admin.getPhone());
@@ -92,7 +92,7 @@ public class AdminRepository {
         String sql = "SELECT * FROM admin WHERE email = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, email);
 
@@ -126,7 +126,7 @@ public class AdminRepository {
         String sql = "SELECT * FROM admin WHERE phone = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, phone);
 
@@ -160,7 +160,7 @@ public class AdminRepository {
         String sql = "SELECT * FROM admin WHERE adminID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, adminID);
 
@@ -189,13 +189,13 @@ public class AdminRepository {
      *
      * @return A list of all admins
      */
-    public List<Admin> getAllAdmins() {
+    public List<Admin> getListOfAllAdmins() {
         String sql = "SELECT * FROM admin";
         List<Admin> admins = new ArrayList<>();
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql);
-             ResultSet resultSet = preparedStatement.executeQuery()) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                ResultSet resultSet = preparedStatement.executeQuery()) {
 
             while (resultSet.next()) {
                 Admin admin = new Admin();

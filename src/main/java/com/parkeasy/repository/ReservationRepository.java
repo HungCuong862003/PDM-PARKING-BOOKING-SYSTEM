@@ -24,7 +24,7 @@ public class ReservationRepository {
                 "EndDate, EndTime, Status, CreatedAt, UserID) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+                PreparedStatement pstmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
 
             pstmt.setString(1, reservation.getVehicleID());
             pstmt.setInt(2, reservation.getSlotID());
@@ -65,7 +65,7 @@ public class ReservationRepository {
                 "WHERE r.ReservationID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+                PreparedStatement pstmt = connection.prepareStatement(query)) {
 
             pstmt.setInt(1, reservationID);
 
@@ -95,7 +95,7 @@ public class ReservationRepository {
                 "WHERE r.VehicleID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+                PreparedStatement pstmt = connection.prepareStatement(query)) {
 
             pstmt.setString(1, vehicleID);
 
@@ -125,7 +125,7 @@ public class ReservationRepository {
                 "WHERE r.SlotID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+                PreparedStatement pstmt = connection.prepareStatement(query)) {
 
             pstmt.setInt(1, slotID);
 
@@ -155,7 +155,7 @@ public class ReservationRepository {
                 "WHERE v.UserID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+                PreparedStatement pstmt = connection.prepareStatement(query)) {
 
             pstmt.setInt(1, userID);
 
@@ -175,9 +175,9 @@ public class ReservationRepository {
     /**
      * Retrieves reservations within a specific date range for a parking slot.
      *
-     * @param slotID The ID of the parking slot
+     * @param slotID    The ID of the parking slot
      * @param startDate The start date of the range
-     * @param endDate The end date of the range
+     * @param endDate   The end date of the range
      * @return A list of reservations in the specified date range for the slot
      */
     public List<Reservation> getReservationsByDateRange(int slotID, String startDate, String endDate) {
@@ -189,7 +189,7 @@ public class ReservationRepository {
                 "r.Status = 'ACTIVE'";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+                PreparedStatement pstmt = connection.prepareStatement(query)) {
 
             pstmt.setInt(1, slotID);
             pstmt.setString(2, startDate);
@@ -220,7 +220,7 @@ public class ReservationRepository {
         String query = "DELETE FROM PARKING_RESERVATION WHERE ReservationID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+                PreparedStatement pstmt = connection.prepareStatement(query)) {
 
             pstmt.setInt(1, reservationID);
 
@@ -238,7 +238,7 @@ public class ReservationRepository {
      * Updates an existing reservation.
      *
      * @param reservationID The ID of the reservation to update
-     * @param reservation The updated reservation information
+     * @param reservation   The updated reservation information
      * @return true if update was successful, false otherwise
      */
     public boolean updateReservationById(int reservationID, Reservation reservation) {
@@ -247,7 +247,7 @@ public class ReservationRepository {
                 "WHERE ReservationID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+                PreparedStatement pstmt = connection.prepareStatement(query)) {
 
             pstmt.setString(1, reservation.getVehicleID());
             pstmt.setInt(2, reservation.getSlotID());
@@ -272,14 +272,14 @@ public class ReservationRepository {
     /**
      * Checks if a parking slot is available for a specific time period.
      *
-     * @param slotID The ID of the parking slot
+     * @param slotID    The ID of the parking slot
      * @param startDate The start date of the period
      * @param startTime The start time of the period
-     * @param endDate The end date of the period
-     * @param endTime The end time of the period
+     * @param endDate   The end date of the period
+     * @param endTime   The end time of the period
      * @return true if the slot is available, false otherwise
      */
-    public boolean checkSlotAvailability(int slotID, String startDate, String startTime, String endDate, String endTime) {
+    public boolean isSlotAvailability(int slotID, String startDate, String startTime, String endDate, String endTime) {
         String query = "SELECT COUNT(*) FROM PARKING_RESERVATION WHERE SlotID = ? AND Status = 'ACTIVE' AND " +
                 "((? BETWEEN StartDate AND EndDate) OR " +
                 "(? BETWEEN StartDate AND EndDate) OR " +
@@ -296,7 +296,7 @@ public class ReservationRepository {
         }
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+                PreparedStatement pstmt = connection.prepareStatement(query)) {
 
             pstmt.setInt(1, slotID);
             pstmt.setString(2, startDate);
@@ -337,14 +337,14 @@ public class ReservationRepository {
      * @param status The status to filter by
      * @return A list of reservations with the specified status
      */
-    public List<Reservation> getReservationsByStatus(String status) {
+    public List<Reservation> getListOfReservationsByStatus(String status) {
         List<Reservation> reservations = new ArrayList<>();
         String query = "SELECT r.*, v.UserID FROM PARKING_RESERVATION r " +
                 "JOIN VEHICLE v ON r.VehicleID = v.VehicleID " +
                 "WHERE r.Status = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+                PreparedStatement pstmt = connection.prepareStatement(query)) {
 
             pstmt.setString(1, status);
 
@@ -366,14 +366,14 @@ public class ReservationRepository {
      *
      * @return A list of all reservations
      */
-    public List<Reservation> getAllReservations() {
+    public List<Reservation> getListOfAllReservations() {
         List<Reservation> reservations = new ArrayList<>();
         String query = "SELECT r.*, v.UserID FROM PARKING_RESERVATION r " +
                 "JOIN VEHICLE v ON r.VehicleID = v.VehicleID";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+                Statement stmt = connection.createStatement();
+                ResultSet rs = stmt.executeQuery(query)) {
 
             while (rs.next()) {
                 reservations.add(mapResultSetToReservation(rs));
@@ -390,14 +390,14 @@ public class ReservationRepository {
      * Updates the status of a reservation.
      *
      * @param reservationID The ID of the reservation
-     * @param status The new status
+     * @param status        The new status
      * @return true if update was successful, false otherwise
      */
     public boolean updateReservationStatus(int reservationID, String status) {
         String query = "UPDATE PARKING_RESERVATION SET Status = ? WHERE ReservationID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+                PreparedStatement pstmt = connection.prepareStatement(query)) {
 
             pstmt.setString(1, status);
             pstmt.setInt(2, reservationID);
@@ -441,8 +441,7 @@ public class ReservationRepository {
                 status,
                 vehicleID,
                 slotID,
-                userID
-        );
+                userID);
 
         return reservation;
     }

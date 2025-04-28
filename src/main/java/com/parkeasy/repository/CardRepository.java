@@ -21,12 +21,12 @@ public class CardRepository {
      * @param userId The ID of the user
      * @return List of cards belonging to the user
      */
-    public List<Card> getCardsByUserId(int userId) {
+    public List<Card> getListOfCardsByUserId(int userId) {
         List<Card> cards = new ArrayList<>();
         String sql = "SELECT * FROM CARD WHERE UserID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, userId);
 
@@ -36,8 +36,7 @@ public class CardRepository {
                             resultSet.getString("CardNumber"),
                             resultSet.getString("ValidTo"),
                             resultSet.getString("CardHolder"),
-                            resultSet.getInt("UserID")
-                    );
+                            resultSet.getInt("UserID"));
                     cards.add(card);
                 }
             }
@@ -56,11 +55,11 @@ public class CardRepository {
      * @param cardNumber The unique card number
      * @return Card object if found, null otherwise
      */
-    public Card getCardByNumber(String cardNumber) {
+    public Card getCardByCardNumber(String cardNumber) {
         String sql = "SELECT * FROM CARD WHERE CardNumber = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, cardNumber);
 
@@ -70,8 +69,7 @@ public class CardRepository {
                             resultSet.getString("CardNumber"),
                             resultSet.getString("ValidTo"),
                             resultSet.getString("CardHolder"),
-                            resultSet.getInt("UserID")
-                    );
+                            resultSet.getInt("UserID"));
                 }
             }
 
@@ -93,8 +91,8 @@ public class CardRepository {
         String sql = "INSERT INTO CARD (CardNumber, ValidTo, CardHolder, UserID) VALUES (?, ?, ?, ?)";
 
         try (Connection connection = DatabaseConnection.getConnection()) {
-            // Check if card already exists
-            if (cardExists(card.getCardNumber())) {
+            // Check if card already exists -> don't insert if it already exists
+            if (isCardExists(card.getCardNumber())) {
                 return false;
             }
 
@@ -119,14 +117,14 @@ public class CardRepository {
      * Updates an existing card in the database
      *
      * @param cardNumber The card number to update
-     * @param card The updated card information
+     * @param card       The updated card information
      * @return true if update successful, false otherwise
      */
     public boolean updateCard(String cardNumber, Card card) {
         String sql = "UPDATE CARD SET ValidTo = ?, CardHolder = ?, UserID = ? WHERE CardNumber = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, card.getValidTo());
             preparedStatement.setString(2, card.getCardHolder());
@@ -153,7 +151,7 @@ public class CardRepository {
         String sql = "DELETE FROM CARD WHERE CardNumber = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, cardNumber);
 
@@ -173,11 +171,11 @@ public class CardRepository {
      * @param cardNumber The card number to check
      * @return true if the card exists, false otherwise
      */
-    public boolean cardExists(String cardNumber) {
+    public boolean isCardExists(String cardNumber) {
         String sql = "SELECT COUNT(*) FROM CARD WHERE CardNumber = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, cardNumber);
 
@@ -201,11 +199,11 @@ public class CardRepository {
      * @param userId The ID of the user
      * @return The count of cards owned by the user
      */
-    public int getCardCountByUser(int userId) {
+    public int getCardCountByUserId(int userId) {
         String sql = "SELECT COUNT(*) FROM CARD WHERE UserID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, userId);
 
@@ -227,14 +225,14 @@ public class CardRepository {
      * Checks if a user is the owner of a specific card
      *
      * @param cardNumber The card number
-     * @param userId The ID of the user
+     * @param userId     The ID of the user
      * @return true if the user owns the card, false otherwise
      */
     public boolean isCardOwnedByUser(String cardNumber, int userId) {
         String sql = "SELECT COUNT(*) FROM CARD WHERE CardNumber = ? AND UserID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, cardNumber);
             preparedStatement.setInt(2, userId);
@@ -258,21 +256,20 @@ public class CardRepository {
      *
      * @return List of all cards
      */
-    public List<Card> getAllCards() {
+    public List<Card> getListOfAllCards() {
         List<Card> cards = new ArrayList<>();
         String sql = "SELECT * FROM CARD";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql);
-             ResultSet resultSet = preparedStatement.executeQuery()) {
+                PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                ResultSet resultSet = preparedStatement.executeQuery()) {
 
             while (resultSet.next()) {
                 Card card = new Card(
                         resultSet.getString("CardNumber"),
                         resultSet.getString("ValidTo"),
                         resultSet.getString("CardHolder"),
-                        resultSet.getInt("UserID")
-                );
+                        resultSet.getInt("UserID"));
                 cards.add(card);
             }
 
