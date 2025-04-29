@@ -69,7 +69,7 @@ public class AdminService {
     /**
      * Constructor for AdminService.
      */
-    public AdminService() {
+    public AdminService() throws SQLException {
         this.adminRepository = new AdminRepository();
         this.parkingSpaceRepository = new ParkingSpaceRepository();
         this.parkingSlotRepository = new ParkingSlotRepository();

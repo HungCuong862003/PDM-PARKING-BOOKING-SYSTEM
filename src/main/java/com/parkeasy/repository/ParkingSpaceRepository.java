@@ -25,7 +25,7 @@ public class ParkingSpaceRepository {
 
             preparedStatement.setString(1, parkingSpace.getParkingID());
             preparedStatement.setString(2, parkingSpace.getParkingAddress());
-            preparedStatement.setFloat(3, parkingSpace.getCostOfParking().floatValue());
+            preparedStatement.setFloat(3, parkingSpace.getCostOfParking());
             preparedStatement.setInt(4, parkingSpace.getNumberOfSlots());
             preparedStatement.setInt(5, parkingSpace.getMaxDuration());
             preparedStatement.setString(6, parkingSpace.getDescription());
@@ -175,7 +175,7 @@ public class ParkingSpaceRepository {
                 PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingSpace.getParkingAddress());
-            preparedStatement.setFloat(2, parkingSpace.getCostOfParking().floatValue());
+            preparedStatement.setFloat(2, parkingSpace.getCostOfParking());
             preparedStatement.setInt(3, parkingSpace.getNumberOfSlots());
             preparedStatement.setInt(4, parkingSpace.getMaxDuration());
             preparedStatement.setString(5, parkingSpace.getDescription());

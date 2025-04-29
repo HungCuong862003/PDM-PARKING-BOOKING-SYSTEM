@@ -34,7 +34,7 @@ public class CustomerManagementController {
      *
      * @param currentAdmin The currently logged-in admin
      */
-    public CustomerManagementController(Admin currentAdmin) {
+    public CustomerManagementController(Admin currentAdmin) throws SQLException {
         this.adminService = new AdminService();
         this.userService = new UserService();
         this.reservationService = new ReservationService();
