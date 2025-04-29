@@ -1,0 +1,7 @@
+{
+  "java.project.sourcePaths": ["src\\main\\java"],
+  "java.project.referencedLibraries": [
+    "c:\\Users\\Admin\\OneDrive - VietNam National University - HCM INTERNATIONAL UNIVERSITY\\Study Files\\Lab\\PDM\\Lab6\\drivers_MYSQL\\drivers_MYSQL\\mysql-connector-java-8.0.26.jar",
+    "c:\\Users\\Admin\\OneDrive - VietNam National University - HCM INTERNATIONAL UNIVERSITY\\Study Files\\Lab\\PDM\\Lab6\\drivers_MYSQL\\drivers_MYSQL\\rs2xml.jar"
+  ]
+}
