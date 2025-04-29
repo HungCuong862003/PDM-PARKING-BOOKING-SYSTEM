@@ -19,7 +19,8 @@ import java.util.Map;
 
 /**
  * Controller class for managing customer information and interactions.
- * Handles the interaction between the admin customer management interface and the service layer.
+ * Handles the interaction between the admin customer management interface and
+ * the service layer.
  */
 public class CustomerManagementController {
 
@@ -33,7 +34,7 @@ public class CustomerManagementController {
      *
      * @param currentAdmin The currently logged-in admin
      */
-    public CustomerManagementController(Admin currentAdmin) throws SQLException {
+    public CustomerManagementController(Admin currentAdmin) {
         this.adminService = new AdminService();
         this.userService = new UserService();
         this.reservationService = new ReservationService();
@@ -79,7 +80,8 @@ public class CustomerManagementController {
     }
 
     /**
-     * Gets all users who have made reservations at parking spaces managed by the current admin.
+     * Gets all users who have made reservations at parking spaces managed by the
+     * current admin.
      *
      * @return List of users who have made reservations at admin's parking spaces
      */
@@ -195,7 +197,7 @@ public class CustomerManagementController {
      * Populates a table model with customer data for display in a JTable.
      *
      * @param tableModel The table model to populate
-     * @param customers The list of customers
+     * @param customers  The list of customers
      */
     public void populateCustomerTable(DefaultTableModel tableModel, List<User> customers) {
         // Clear existing rows
@@ -224,10 +226,11 @@ public class CustomerManagementController {
     }
 
     /**
-     * Populates a table model with customer reservation data for display in a JTable.
+     * Populates a table model with customer reservation data for display in a
+     * JTable.
      *
      * @param tableModel The table model to populate
-     * @param userID The ID of the user whose reservations to display
+     * @param userID     The ID of the user whose reservations to display
      */
     public void populateUserReservationsTable(DefaultTableModel tableModel, int userID) {
         // Clear existing rows
@@ -279,7 +282,7 @@ public class CustomerManagementController {
      * Populates a table model with top customer data for display in a JTable.
      *
      * @param tableModel The table model to populate
-     * @param limit Maximum number of customers to display
+     * @param limit      Maximum number of customers to display
      */
     public void populateTopCustomersTable(DefaultTableModel tableModel, int limit) {
         // Clear existing rows
