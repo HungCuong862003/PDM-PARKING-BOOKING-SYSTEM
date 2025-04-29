@@ -59,9 +59,9 @@ public class AuthService {
     /**
      * Updates user profile information.
      *
-     * @param userId   User ID
+     * @param userId User ID
      * @param userName New user name (or null to keep current)
-     * @param phone    New phone (or null to keep current)
+     * @param phone New phone (or null to keep current)
      * @return true if update was successful, false otherwise
      */
     public boolean updateUserProfile(int userId, String userName, String phone) {
@@ -71,9 +71,9 @@ public class AuthService {
     /**
      * Updates admin profile information.
      *
-     * @param adminId   Admin ID
+     * @param adminId Admin ID
      * @param adminName New admin name (or null to keep current)
-     * @param phone     New phone (or null to keep current)
+     * @param phone New phone (or null to keep current)
      * @return true if update was successful, false otherwise
      */
     public boolean updateAdminProfile(int adminId, String adminName, String phone) {
@@ -83,16 +83,15 @@ public class AuthService {
     /**
      * Generic method to verify a password.
      *
-     * @param tableName    Table name
+     * @param tableName Table name
      * @param idColumnName ID column name
-     * @param id           User or Admin ID
-     * @param password     Password to check
+     * @param id User or Admin ID
+     * @param password Password to check
      * @return true if password matches, false otherwise
      */
     private boolean verifyPassword(String tableName, String idColumnName, int id, String password) {
         try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT COUNT(*) FROM " + tableName + " WHERE " + idColumnName + " = ? AND "
-                    + PASSWORD_COLUMN + " = ?";
+            String query = "SELECT COUNT(*) FROM " + tableName + " WHERE " + idColumnName + " = ? AND " + PASSWORD_COLUMN + " = ?";
 
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 statement.setInt(1, id);
@@ -115,7 +114,7 @@ public class AuthService {
     /**
      * Checks if the given password matches the stored password for a user.
      *
-     * @param userId   User ID
+     * @param userId User ID
      * @param password Password to check
      * @return true if password matches, false otherwise
      */
@@ -126,7 +125,7 @@ public class AuthService {
     /**
      * Checks if the given password matches the stored password for an admin.
      *
-     * @param adminId  Admin ID
+     * @param adminId Admin ID
      * @param password Password to check
      * @return true if password matches, false otherwise
      */
@@ -157,20 +156,21 @@ public class AuthService {
     /**
      * Records a login activity.
      *
-     * @param id      User or Admin ID
+     * @param id User or Admin ID
      * @param isAdmin true if admin, false if user
      */
     private void recordLoginActivity(int id, boolean isAdmin) {
         try (Connection connection = DatabaseConnection.getConnection()) {
             // Check if the login_activity table exists and create it if it doesn't
             try {
-                String createTableQuery = "CREATE TABLE IF NOT EXISTS login_activity (" +
-                        "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                        "userId INT NOT NULL, " +
-                        "isAdmin BOOLEAN NOT NULL, " +
-                        "activityType VARCHAR(10) NOT NULL, " +
-                        "activityTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
-                        ")";
+                String createTableQuery =
+                        "CREATE TABLE IF NOT EXISTS login_activity (" +
+                                "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                                "userId INT NOT NULL, " +
+                                "isAdmin BOOLEAN NOT NULL, " +
+                                "activityType VARCHAR(10) NOT NULL, " +
+                                "activityTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                                ")";
 
                 try (Statement createStatement = connection.createStatement()) {
                     createStatement.execute(createTableQuery);
@@ -199,7 +199,7 @@ public class AuthService {
     /**
      * Records a logout activity.
      *
-     * @param id      User or Admin ID
+     * @param id User or Admin ID
      * @param isAdmin true if admin, false if user
      */
     private void recordLogoutActivity(int id, boolean isAdmin) {
@@ -223,8 +223,8 @@ public class AuthService {
     /**
      * Stores a reset token.
      *
-     * @param id      User or Admin ID
-     * @param token   Reset token
+     * @param id User or Admin ID
+     * @param token Reset token
      * @param isAdmin true if admin, false if user
      * @throws SQLException if an error occurs during database operation
      */
@@ -232,14 +232,15 @@ public class AuthService {
         try (Connection connection = DatabaseConnection.getConnection()) {
             // Create the password_resets table if it doesn't exist
             try {
-                String createTableQuery = "CREATE TABLE IF NOT EXISTS password_resets (" +
-                        "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                        "userId INT, " +
-                        "adminId INT, " +
-                        "token VARCHAR(255) NOT NULL, " +
-                        "expiryDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP + INTERVAL 1 DAY, " +
-                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
-                        ")";
+                String createTableQuery =
+                        "CREATE TABLE IF NOT EXISTS password_resets (" +
+                                "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                                "userId INT, " +
+                                "adminId INT, " +
+                                "token VARCHAR(255) NOT NULL, " +
+                                "expiryDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP + INTERVAL 1 DAY, " +
+                                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                                ")";
 
                 try (Statement createStatement = connection.createStatement()) {
                     createStatement.execute(createTableQuery);
@@ -265,7 +266,7 @@ public class AuthService {
     /**
      * Attempts to log in a user with the provided email and password.
      *
-     * @param email    User's email address
+     * @param email User's email address
      * @param password User's password
      * @return true if login successful, false otherwise
      */
@@ -290,7 +291,7 @@ public class AuthService {
     /**
      * Attempts to log in an admin with the provided email and password.
      *
-     * @param email    Admin's email address
+     * @param email Admin's email address
      * @param password Admin's password
      * @return true if login successful, false otherwise
      */
@@ -317,8 +318,7 @@ public class AuthService {
      */
     private User authenticateUser(String tableName, String email, String password) {
         try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT * FROM " + tableName + " WHERE " + EMAIL_COLUMN + " = ? AND " + PASSWORD_COLUMN
-                    + " = ?";
+            String query = "SELECT * FROM " + tableName + " WHERE " + EMAIL_COLUMN + " = ? AND " + PASSWORD_COLUMN + " = ?";
 
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 statement.setString(1, email);
@@ -349,8 +349,7 @@ public class AuthService {
      */
     private Admin authenticateAdmin(String tableName, String email, String password) {
         try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT * FROM " + tableName + " WHERE " + EMAIL_COLUMN + " = ? AND " + PASSWORD_COLUMN
-                    + " = ?";
+            String query = "SELECT * FROM " + tableName + " WHERE " + EMAIL_COLUMN + " = ? AND " + PASSWORD_COLUMN + " = ?";
 
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 statement.setString(1, email);
@@ -441,7 +440,7 @@ public class AuthService {
      * Checks if an email already exists in a database table.
      *
      * @param tableName Table to check
-     * @param email     Email to check
+     * @param email Email to check
      * @return true if the email exists, false otherwise
      */
     private boolean isEmailExists(String tableName, String email) {
@@ -469,7 +468,7 @@ public class AuthService {
      * Checks if a phone number already exists in a database table.
      *
      * @param tableName Table to check
-     * @param phone     Phone number to check
+     * @param phone Phone number to check
      * @return true if the phone number exists, false otherwise
      */
     private boolean isPhoneExists(String tableName, String phone) {
@@ -537,8 +536,8 @@ public class AuthService {
      * Registers a new user with the provided details.
      *
      * @param userName User's name
-     * @param email    User's email address
-     * @param phone    User's phone number
+     * @param email User's email address
+     * @param phone User's phone number
      * @param password User's password
      * @return true if registration successful, false otherwise
      */
@@ -590,9 +589,9 @@ public class AuthService {
      * Registers a new admin with the provided details.
      *
      * @param adminName Admin's name
-     * @param email     Admin's email address
-     * @param phone     Admin's phone number
-     * @param password  Admin's password
+     * @param email Admin's email address
+     * @param phone Admin's phone number
+     * @param password Admin's password
      * @return true if registration successful, false otherwise
      */
     public boolean registerAdmin(String adminName, String email, String phone, String password) {
@@ -641,19 +640,17 @@ public class AuthService {
     /**
      * Updates a password in the specified table.
      *
-     * @param tableName    Table name (USER or ADMIN)
+     * @param tableName Table name (USER or ADMIN)
      * @param idColumnName Column name for ID
-     * @param id           User or Admin ID
-     * @param oldPassword  Current password
-     * @param newPassword  New password
+     * @param id User or Admin ID
+     * @param oldPassword Current password
+     * @param newPassword New password
      * @return true if password was updated successfully, false otherwise
      */
-    private boolean updatePassword(String tableName, String idColumnName, int id, String oldPassword,
-            String newPassword) {
+    private boolean updatePassword(String tableName, String idColumnName, int id, String oldPassword, String newPassword) {
         try (Connection connection = DatabaseConnection.getConnection()) {
             // First verify the old password
-            String verifyQuery = "SELECT COUNT(*) FROM " + tableName + " WHERE " + idColumnName + " = ? AND "
-                    + PASSWORD_COLUMN + " = ?";
+            String verifyQuery = "SELECT COUNT(*) FROM " + tableName + " WHERE " + idColumnName + " = ? AND " + PASSWORD_COLUMN + " = ?";
 
             try (PreparedStatement verifyStatement = connection.prepareStatement(verifyQuery)) {
                 verifyStatement.setInt(1, id);
@@ -662,8 +659,7 @@ public class AuthService {
                 try (ResultSet resultSet = verifyStatement.executeQuery()) {
                     if (resultSet.next() && resultSet.getInt(1) > 0) {
                         // Old password verified, update to new password
-                        String updateQuery = "UPDATE " + tableName + " SET " + PASSWORD_COLUMN + " = ? WHERE "
-                                + idColumnName + " = ?";
+                        String updateQuery = "UPDATE " + tableName + " SET " + PASSWORD_COLUMN + " = ? WHERE " + idColumnName + " = ?";
 
                         try (PreparedStatement updateStatement = connection.prepareStatement(updateQuery)) {
                             updateStatement.setString(1, newPassword);
@@ -689,7 +685,7 @@ public class AuthService {
     /**
      * Updates a user's password.
      *
-     * @param userId      User ID
+     * @param userId User ID
      * @param oldPassword Current password
      * @param newPassword New password
      * @return true if password was updated successfully, false otherwise
@@ -701,7 +697,7 @@ public class AuthService {
     /**
      * Updates an admin's password.
      *
-     * @param adminId     Admin ID
+     * @param adminId Admin ID
      * @param oldPassword Current password
      * @param newPassword New password
      * @return true if password was updated successfully, false otherwise
@@ -713,10 +709,10 @@ public class AuthService {
     /**
      * Generic method to request a password reset.
      *
-     * @param tableName    Table name (USER or ADMIN)
+     * @param tableName Table name (USER or ADMIN)
      * @param idColumnName Column name for ID
-     * @param email        Email address
-     * @param isAdmin      true if admin, false if user
+     * @param email Email address
+     * @param isAdmin true if admin, false if user
      * @return reset token if successful, empty string otherwise
      */
     private String requestPasswordReset(String tableName, String idColumnName, String email, boolean isAdmin) {
@@ -786,9 +782,9 @@ public class AuthService {
     /**
      * Generic method to reset a password using a token.
      *
-     * @param token       Reset token
+     * @param token Reset token
      * @param newPassword New password
-     * @param isAdmin     true for admin, false for user
+     * @param isAdmin true for admin, false for user
      * @return true if password was reset successfully, false otherwise
      */
     private boolean resetPassword(String token, String newPassword, boolean isAdmin) {
@@ -809,8 +805,7 @@ public class AuthService {
                         int id = resultSet.getInt(idField);
 
                         // Update the password
-                        String updateQuery = "UPDATE " + tableName + " SET " + PASSWORD_COLUMN + " = ? WHERE "
-                                + idColumnName + " = ?";
+                        String updateQuery = "UPDATE " + tableName + " SET " + PASSWORD_COLUMN + " = ? WHERE " + idColumnName + " = ?";
 
                         try (PreparedStatement updateStatement = connection.prepareStatement(updateQuery)) {
                             updateStatement.setString(1, newPassword);
@@ -846,7 +841,7 @@ public class AuthService {
     /**
      * Resets a user's password using a reset token.
      *
-     * @param token       Reset token
+     * @param token Reset token
      * @param newPassword New password
      * @return true if password was reset successfully, false otherwise
      */
@@ -857,7 +852,7 @@ public class AuthService {
     /**
      * Resets an admin's password using a reset token.
      *
-     * @param token       Reset token
+     * @param token Reset token
      * @param newPassword New password
      * @return true if password was reset successfully, false otherwise
      */
@@ -869,14 +864,13 @@ public class AuthService {
      * Generic method to validate credentials.
      *
      * @param tableName Table name (USER or ADMIN)
-     * @param email     Email
-     * @param password  Password
+     * @param email Email
+     * @param password Password
      * @return true if credentials are valid, false otherwise
      */
     private boolean validateCredentials(String tableName, String email, String password) {
         try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT COUNT(*) FROM " + tableName + " WHERE " + EMAIL_COLUMN + " = ? AND "
-                    + PASSWORD_COLUMN + " = ?";
+            String query = "SELECT COUNT(*) FROM " + tableName + " WHERE " + EMAIL_COLUMN + " = ? AND " + PASSWORD_COLUMN + " = ?";
 
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 statement.setString(1, email);
@@ -899,7 +893,7 @@ public class AuthService {
     /**
      * Validates a user's credentials.
      *
-     * @param email    User's email
+     * @param email User's email
      * @param password User's password
      * @return true if credentials are valid, false otherwise
      */
@@ -910,7 +904,7 @@ public class AuthService {
     /**
      * Validates an admin's credentials.
      *
-     * @param email    Admin's email
+     * @param email Admin's email
      * @param password Admin's password
      * @return true if credentials are valid, false otherwise
      */
@@ -1055,29 +1049,29 @@ public class AuthService {
     /**
      * Generic method to update a profile.
      *
-     * @param tableName      Table name (USER or ADMIN)
-     * @param idColumnName   ID column name
+     * @param tableName Table name (USER or ADMIN)
+     * @param idColumnName ID column name
      * @param nameColumnName Name column name
-     * @param id             Entity ID
-     * @param name           New name (or null to keep current)
-     * @param phone          New phone (or null to keep current)
-     * @param isPhoneExists  Function to check if phone exists
+     * @param id Entity ID
+     * @param name New name (or null to keep current)
+     * @param phone New phone (or null to keep current)
+     * @param isPhoneExists Function to check if phone exists
      * @return true if update was successful, false otherwise
      */
     /**
      * Updates a profile with the provided details.
      *
-     * @param tableName      Table name to update
-     * @param idColumnName   ID column name
+     * @param tableName Table name to update
+     * @param idColumnName ID column name
      * @param nameColumnName Name column name
-     * @param id             Entity ID
-     * @param name           New name (or null to keep current)
-     * @param phone          New phone (or null to keep current)
-     * @param isAdmin        Whether this is an admin profile
+     * @param id Entity ID
+     * @param name New name (or null to keep current)
+     * @param phone New phone (or null to keep current)
+     * @param isAdmin Whether this is an admin profile
      * @return true if update was successful, false otherwise
      */
     private boolean updateProfile(String tableName, String idColumnName, String nameColumnName, int id,
-            String name, String phone, boolean isAdmin) {
+                                  String name, String phone, boolean isAdmin) {
         try (Connection connection = DatabaseConnection.getConnection()) {
             // Build the update query based on which fields are being updated
             StringBuilder queryBuilder = new StringBuilder("UPDATE " + tableName + " SET ");

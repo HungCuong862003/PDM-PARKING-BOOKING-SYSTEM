@@ -24,8 +24,7 @@ public class PaymentRepository {
         String sql = "INSERT INTO PAYMENT (PaymentMethod, Amount, PaymentDate, ReservationID, CardNumber) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql,
-                        Statement.RETURN_GENERATED_KEYS)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             preparedStatement.setString(1, payment.getPaymentMethod());
             preparedStatement.setBigDecimal(2, payment.getAmount());
@@ -62,7 +61,7 @@ public class PaymentRepository {
         String sql = "SELECT * FROM PAYMENT WHERE PaymentID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, paymentID);
 
@@ -98,7 +97,7 @@ public class PaymentRepository {
         String sql = "SELECT * FROM PAYMENT WHERE ReservationID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, reservationID);
 
@@ -128,13 +127,13 @@ public class PaymentRepository {
      *
      * @return A list of all payments
      */
-    public List<Payment> getListOfAllPayments() {
+    public List<Payment> getAllPayments() {
         List<Payment> payments = new ArrayList<>();
         String sql = "SELECT * FROM PAYMENT";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                Statement statement = connection.createStatement();
-                ResultSet resultSet = statement.executeQuery(sql)) {
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
 
             while (resultSet.next()) {
                 Payment payment = new Payment();
@@ -165,7 +164,7 @@ public class PaymentRepository {
         String sql = "UPDATE PAYMENT SET PaymentMethod = ?, Amount = ?, PaymentDate = ?, ReservationID = ?, CardNumber = ? WHERE PaymentID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, payment.getPaymentMethod());
             preparedStatement.setBigDecimal(2, payment.getAmount());
@@ -195,7 +194,7 @@ public class PaymentRepository {
         String sql = "DELETE FROM PAYMENT WHERE PaymentID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, paymentID);
 
@@ -220,7 +219,7 @@ public class PaymentRepository {
         String sql = "DELETE FROM PAYMENT WHERE ReservationID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, reservationID);
 
@@ -249,7 +248,7 @@ public class PaymentRepository {
                 "WHERE v.UserID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, userID);
 
@@ -284,7 +283,7 @@ public class PaymentRepository {
         String sql = "SELECT SUM(Amount) AS TotalAmount FROM PAYMENT WHERE ReservationID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, reservationID);
 
@@ -300,27 +299,5 @@ public class PaymentRepository {
         }
 
         return BigDecimal.ZERO;
-    }
-
-    public BigDecimal getTotalPaymentsByUser(int currentUserId, String sql) {
-        BigDecimal total = BigDecimal.ZERO; // Initialize total to zero
-
-        try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setInt(1, currentUserId);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    total = resultSet.getBigDecimal("TotalAmount");
-                }
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error calculating total payments by user: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return total;
     }
 }

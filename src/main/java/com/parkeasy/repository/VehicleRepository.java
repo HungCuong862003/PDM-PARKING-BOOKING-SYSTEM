@@ -27,7 +27,7 @@ public class VehicleRepository {
         String sql = "INSERT INTO VEHICLE (VehicleID, UserID) VALUES (?, ?)";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, vehicle.getVehicleID());
             preparedStatement.setInt(2, vehicle.getUserID());
@@ -52,7 +52,7 @@ public class VehicleRepository {
         String sql = "SELECT * FROM VEHICLE WHERE VehicleID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, vehicleID);
 
@@ -60,7 +60,8 @@ public class VehicleRepository {
                 if (resultSet.next()) {
                     return new Vehicle(
                             resultSet.getString("VehicleID"),
-                            resultSet.getInt("UserID"));
+                            resultSet.getInt("UserID")
+                    );
                 }
             }
 
@@ -82,13 +83,14 @@ public class VehicleRepository {
         String sql = "SELECT * FROM VEHICLE";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                Statement statement = connection.createStatement();
-                ResultSet resultSet = statement.executeQuery(sql)) {
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
 
             while (resultSet.next()) {
                 vehicles.add(new Vehicle(
                         resultSet.getString("VehicleID"),
-                        resultSet.getInt("UserID")));
+                        resultSet.getInt("UserID")
+                ));
             }
 
         } catch (SQLException e) {
@@ -109,7 +111,7 @@ public class VehicleRepository {
         String sql = "DELETE FROM VEHICLE WHERE VehicleID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, vehicleID);
 
@@ -129,12 +131,12 @@ public class VehicleRepository {
      * @param userID The ID of the user
      * @return A list of vehicles belonging to the specified user
      */
-    public List<Vehicle> getListOfVehiclesByUserId(int userID) {
+    public List<Vehicle> getVehiclesByUserId(int userID) {
         List<Vehicle> vehicles = new ArrayList<>();
         String sql = "SELECT * FROM VEHICLE WHERE UserID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, userID);
 
@@ -142,7 +144,8 @@ public class VehicleRepository {
                 while (resultSet.next()) {
                     vehicles.add(new Vehicle(
                             resultSet.getString("VehicleID"),
-                            resultSet.getInt("UserID")));
+                            resultSet.getInt("UserID")
+                    ));
                 }
             }
 
@@ -158,14 +161,14 @@ public class VehicleRepository {
      * Updates vehicle information.
      *
      * @param vehicleID The ID of the vehicle to update
-     * @param vehicle   The updated vehicle information
+     * @param vehicle The updated vehicle information
      * @return true if update was successful, false otherwise
      */
     public boolean updateVehicle(String vehicleID, Vehicle vehicle) {
         String sql = "UPDATE VEHICLE SET UserID = ? WHERE VehicleID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, vehicle.getUserID());
             preparedStatement.setString(2, vehicleID);
@@ -190,7 +193,7 @@ public class VehicleRepository {
         String sql = "SELECT COUNT(*) FROM VEHICLE WHERE UserID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, userID);
 
@@ -218,13 +221,13 @@ public class VehicleRepository {
         String sql = "SELECT COUNT(*) FROM VEHICLE WHERE VehicleID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, vehicleID);
 
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 if (resultSet.next()) {
-                    return resultSet.getInt(1) > 0; // return true if count > 0
+                    return resultSet.getInt(1) > 0;
                 }
             }
 
@@ -240,14 +243,14 @@ public class VehicleRepository {
      * Checks if a vehicle belongs to a specific user.
      *
      * @param vehicleID The ID of the vehicle
-     * @param userID    The ID of the user
+     * @param userID The ID of the user
      * @return true if the vehicle belongs to the user, false otherwise
      */
     public boolean isVehicleOwnedByUser(String vehicleID, int userID) {
         String sql = "SELECT COUNT(*) FROM VEHICLE WHERE VehicleID = ? AND UserID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, vehicleID);
             preparedStatement.setInt(2, userID);

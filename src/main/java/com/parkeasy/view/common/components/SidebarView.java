@@ -1,4 +1,4 @@
-package main.java.com.parkeasy.view.common.components;
+package com.parkeasy.view.common.components;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -32,8 +32,9 @@ public class SidebarView extends JPanel {
         setPreferredSize(new Dimension(200, 600));
 
         // Set background color
-        setBackground(isAdmin ? new Color(81, 45, 168) : // Purple for admin
-                new Color(30, 41, 59)); // Dark blue for user
+        setBackground(isAdmin ?
+                new Color(81, 45, 168) : // Purple for admin
+                new Color(30, 41, 59));  // Dark blue for user
 
         // Create logo container
         JPanel logoContainer = createLogoContainer();
@@ -150,7 +151,7 @@ public class SidebarView extends JPanel {
     /**
      * Creates a menu button with the specified text.
      *
-     * @param text       Text for the button
+     * @param text Text for the button
      * @param isSelected Whether the button should appear selected
      * @return JButton with appropriate styling
      */
@@ -166,10 +167,12 @@ public class SidebarView extends JPanel {
 
         // Set colors based on state
         Color normalBg = new Color(0, 0, 0, 0); // Transparent
-        Color selectedBg = isAdmin ? new Color(126, 87, 194) : // Purple for admin
-                new Color(59, 130, 246); // Blue for user
-        Color hoverBg = isAdmin ? new Color(103, 58, 183) : // Purple hover for admin
-                new Color(37, 99, 235); // Blue hover for user
+        Color selectedBg = isAdmin ?
+                new Color(126, 87, 194) : // Purple for admin
+                new Color(59, 130, 246);  // Blue for user
+        Color hoverBg = isAdmin ?
+                new Color(103, 58, 183) : // Purple hover for admin
+                new Color(37, 99, 235);   // Blue hover for user
 
         // Set initial state
         button.setForeground(Color.WHITE);
@@ -253,8 +256,9 @@ public class SidebarView extends JPanel {
 
                 // Apply appropriate style
                 Color normalBg = new Color(0, 0, 0, 0); // Transparent
-                Color selectedBg = isAdmin ? new Color(126, 87, 194) : // Purple for admin
-                        new Color(59, 130, 246); // Blue for user
+                Color selectedBg = isAdmin ?
+                        new Color(126, 87, 194) : // Purple for admin
+                        new Color(59, 130, 246);  // Blue for user
 
                 button.setBackground(isSelected ? selectedBg : normalBg);
                 button.setOpaque(isSelected);

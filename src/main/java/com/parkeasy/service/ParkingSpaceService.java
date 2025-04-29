@@ -24,12 +24,12 @@ public class ParkingSpaceService {
 
     // get all parking spaces
     public List<ParkingSpace> getAllParkingSpaces() {
-        return parkingSpaceRepository.getListOfAllParkingSpaces();
+        return parkingSpaceRepository.getAllParkingSpaces();
     }
 
     // get all parking spaces by admin ID
     public List<ParkingSpace> getAllParkingSpacesByAdminId(int adminID) {
-        return parkingSpaceRepository.getListOfParkingSpacesByAdminId(adminID);
+        return parkingSpaceRepository.getParkingSpacesByAdminId(adminID);
     }
 
     // delete a parking space by its ID

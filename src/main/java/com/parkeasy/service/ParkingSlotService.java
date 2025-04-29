@@ -9,8 +9,7 @@ import java.util.List;
 
 /**
  * Service class for handling parking slot operations in the ParkEasy system.
- * Provides functionality for creating, retrieving, updating, and deleting
- * parking slots.
+ * Provides functionality for creating, retrieving, updating, and deleting parking slots.
  */
 public class ParkingSlotService {
     private final ParkingSlotRepository parkingSlotRepository;
@@ -78,7 +77,7 @@ public class ParkingSlotService {
         }
 
         try {
-            return parkingSlotRepository.getListOfParkingSlotsByParkingSpaceId(parkingID);
+            return parkingSlotRepository.getParkingSlotsByParkingSpaceId(parkingID);
         } catch (Exception e) {
             System.err.println("Error retrieving parking slots: " + e.getMessage());
             e.printStackTrace();
@@ -110,7 +109,7 @@ public class ParkingSlotService {
     /**
      * Updates a parking slot by its ID.
      *
-     * @param slotID      The ID of the parking slot to update
+     * @param slotID The ID of the parking slot to update
      * @param parkingSlot The updated parking slot information
      * @return true if update was successful, false otherwise
      */
@@ -133,7 +132,7 @@ public class ParkingSlotService {
     /**
      * Updates the availability status of a parking slot.
      *
-     * @param slotID       The ID of the parking slot to update
+     * @param slotID The ID of the parking slot to update
      * @param availability The new availability status
      * @return true if update was successful, false otherwise
      */
@@ -172,7 +171,7 @@ public class ParkingSlotService {
         }
 
         try {
-            List<ParkingSlot> slots = parkingSlotRepository.getListOfParkingSlotsByParkingSpaceId(parkingID);
+            List<ParkingSlot> slots = parkingSlotRepository.getParkingSlotsByParkingSpaceId(parkingID);
             return (int) slots.stream().filter(ParkingSlot::isAvailability).count();
         } catch (Exception e) {
             System.err.println("Error counting available slots: " + e.getMessage());
@@ -194,7 +193,7 @@ public class ParkingSlotService {
         }
 
         try {
-            List<ParkingSlot> slots = parkingSlotRepository.getListOfParkingSlotsByParkingSpaceId(parkingID);
+            List<ParkingSlot> slots = parkingSlotRepository.getParkingSlotsByParkingSpaceId(parkingID);
             return slots.stream()
                     .filter(ParkingSlot::isAvailability)
                     .findFirst()

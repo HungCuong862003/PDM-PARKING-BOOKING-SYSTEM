@@ -10,7 +10,6 @@ import main.java.com.parkeasy.service.PaymentService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Controller for managing user profile information and settings
@@ -23,7 +22,6 @@ public class UserProfileController {
 
     /**
      * Constructor for UserProfileController
-     * 
      * @param userId The ID of the current logged-in user
      */
     public UserProfileController(int userId) {
@@ -35,7 +33,6 @@ public class UserProfileController {
 
     /**
      * Gets the current user's profile information
-     * 
      * @return User object containing the user's information
      */
     public User getUserProfile() {
@@ -44,7 +41,6 @@ public class UserProfileController {
 
     /**
      * Updates the user's profile information
-     * 
      * @param updatedUserInfo Map containing the updated user information
      * @return boolean indicating success or failure
      */
@@ -94,7 +90,6 @@ public class UserProfileController {
 
     /**
      * Gets the list of vehicles registered to the user
-     * 
      * @return List of Vehicle objects
      */
     public List<Vehicle> getUserVehicles() {
@@ -103,7 +98,6 @@ public class UserProfileController {
 
     /**
      * Adds a new vehicle for the user
-     * 
      * @param vehicleId The license plate or identification of the vehicle
      * @return boolean indicating success or failure
      */
@@ -120,14 +114,13 @@ public class UserProfileController {
 
     /**
      * Removes a vehicle from the user's profile
-     * 
      * @param vehicleId The ID of the vehicle to remove
      * @return boolean indicating success or failure
      */
     public boolean removeVehicle(String vehicleId) {
         // Verify the vehicle belongs to the current user
-        Optional<Vehicle> vehicle = vehicleService.getVehicleById(vehicleId);
-        if (!vehicle.isPresent() || vehicle.get().getUserID() != currentUserId) {
+        Vehicle vehicle = vehicleService.getVehicleById(vehicleId);
+        if (vehicle == null || vehicle.getUserID() != currentUserId) {
             return false;
         }
 
@@ -136,16 +129,14 @@ public class UserProfileController {
 
     /**
      * Gets the payment cards registered to the user
-     * 
      * @return List of Card objects
      */
     public List<Card> getUserCards() {
-        return paymentService.getListOfCardsByUserId(currentUserId);
+        return paymentService.getCardsByUserId(currentUserId);
     }
 
     /**
      * Adds a new payment card for the user
-     * 
      * @param cardInfo Map containing the card information
      * @return boolean indicating success or failure
      */
@@ -162,13 +153,12 @@ public class UserProfileController {
 
     /**
      * Removes a payment card from the user's profile
-     * 
      * @param cardNumber The number of the card to remove
      * @return boolean indicating success or failure
      */
     public boolean removePaymentCard(String cardNumber) {
         // Verify the card belongs to the current user
-        Card card = paymentService.getListOfCardByNumber(cardNumber);
+        Card card = paymentService.getCardByNumber(cardNumber);
         if (card == null || card.getUserID() != currentUserId) {
             return false;
         }

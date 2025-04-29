@@ -54,8 +54,7 @@ public class AuthController {
      * Sets up event listeners for the login view.
      */
     private void setupLoginViewListeners() {
-        if (loginView == null)
-            return;
+        if (loginView == null) return;
 
         // Login button listener
         loginView.getLoginButton().addActionListener(new ActionListener() {
@@ -87,8 +86,7 @@ public class AuthController {
      * Sets up event listeners for the registration view.
      */
     private void setupRegistrationViewListeners() {
-        if (registrationView == null)
-            return;
+        if (registrationView == null) return;
 
         // Register button listener
         registrationView.getRegisterButton().addActionListener(new ActionListener() {

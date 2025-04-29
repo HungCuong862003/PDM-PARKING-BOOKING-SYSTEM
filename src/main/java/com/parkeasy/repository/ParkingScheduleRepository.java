@@ -22,7 +22,7 @@ public class ParkingScheduleRepository {
         String sql = "INSERT INTO parkingSchedule (ScheduleID, DayOfWeek, OpeningTime, ClosingTime, ParkingID) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, parkingSchedule.getScheduleID());
             preparedStatement.setInt(2, parkingSchedule.getDayOfWeek());
@@ -46,11 +46,11 @@ public class ParkingScheduleRepository {
      * @param scheduleID The ID of the parking schedule to retrieve
      * @return The found ParkingSchedule or null if not found
      */
-    public ParkingSchedule getParkingScheduleByScheduleId(int scheduleID) {
+    public ParkingSchedule getParkingScheduleById(int scheduleID) {
         String sql = "SELECT * FROM parkingSchedule WHERE ScheduleID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, scheduleID);
 
@@ -79,7 +79,7 @@ public class ParkingScheduleRepository {
         String sql = "SELECT * FROM parkingSchedule WHERE ParkingID = ? ORDER BY DayOfWeek, OpeningTime";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
 
@@ -98,8 +98,7 @@ public class ParkingScheduleRepository {
     }
 
     /**
-     * Retrieves the parking schedule for a specific day of the week in a parking
-     * space.
+     * Retrieves the parking schedule for a specific day of the week in a parking space.
      *
      * @param parkingID The ID of the parking space
      * @param dayOfWeek The day of the week (1-7, where 1 is Sunday)
@@ -110,7 +109,7 @@ public class ParkingScheduleRepository {
         String sql = "SELECT * FROM parkingSchedule WHERE ParkingID = ? AND DayOfWeek = ? ORDER BY OpeningTime";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
             preparedStatement.setInt(2, dayOfWeek);
@@ -135,11 +134,11 @@ public class ParkingScheduleRepository {
      * @param scheduleID The ID of the parking schedule to delete
      * @return true if deletion was successful, false otherwise
      */
-    public boolean deleteParkingScheduleByScheduleId(int scheduleID) {
+    public boolean deleteParkingScheduleById(int scheduleID) {
         String sql = "DELETE FROM parkingSchedule WHERE ScheduleID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, scheduleID);
 
@@ -156,7 +155,7 @@ public class ParkingScheduleRepository {
     /**
      * Updates a parking schedule's information.
      *
-     * @param scheduleID      The ID of the parking schedule to update
+     * @param scheduleID The ID of the parking schedule to update
      * @param parkingSchedule The updated parking schedule information
      * @return true if update was successful, false otherwise
      */
@@ -164,7 +163,7 @@ public class ParkingScheduleRepository {
         String sql = "UPDATE parkingSchedule SET DayOfWeek = ?, OpeningTime = ?, ClosingTime = ?, ParkingID = ? WHERE ScheduleID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setInt(1, parkingSchedule.getDayOfWeek());
             preparedStatement.setTime(2, parkingSchedule.getOpeningTime());
@@ -185,7 +184,7 @@ public class ParkingScheduleRepository {
     /**
      * Updates opening and closing times for a specific schedule.
      *
-     * @param scheduleID  The ID of the parking schedule
+     * @param scheduleID The ID of the parking schedule
      * @param openingTime The new opening time
      * @param closingTime The new closing time
      * @return true if update was successful, false otherwise
@@ -194,7 +193,7 @@ public class ParkingScheduleRepository {
         String sql = "UPDATE parkingSchedule SET OpeningTime = ?, ClosingTime = ? WHERE ScheduleID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setTime(1, openingTime);
             preparedStatement.setTime(2, closingTime);
@@ -220,7 +219,7 @@ public class ParkingScheduleRepository {
         String sql = "DELETE FROM parkingSchedule WHERE ParkingID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
 
@@ -245,7 +244,7 @@ public class ParkingScheduleRepository {
         String sql = "DELETE FROM parkingSchedule WHERE ParkingID = ? AND DayOfWeek = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
             preparedStatement.setInt(2, dayOfWeek);
@@ -266,11 +265,11 @@ public class ParkingScheduleRepository {
      * @param parkingID The ID of the parking space
      * @return true if schedules exist, false otherwise
      */
-    public boolean isHasSchedules(String parkingID) {
+    public boolean hasSchedules(String parkingID) {
         String sql = "SELECT COUNT(*) FROM parkingSchedule WHERE ParkingID = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             preparedStatement.setString(1, parkingID);
 
@@ -293,13 +292,13 @@ public class ParkingScheduleRepository {
      *
      * @return A list of all parking schedules
      */
-    public List<ParkingSchedule> getListOfAllParkingSchedules() {
+    public List<ParkingSchedule> getAllParkingSchedules() {
         List<ParkingSchedule> parkingSchedules = new ArrayList<>();
         String sql = "SELECT * FROM parkingSchedule ORDER BY ParkingID, DayOfWeek, OpeningTime";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                Statement statement = connection.createStatement();
-                ResultSet resultSet = statement.executeQuery(sql)) {
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
 
             while (resultSet.next()) {
                 parkingSchedules.add(extractParkingScheduleFromResultSet(resultSet));
@@ -314,8 +313,7 @@ public class ParkingScheduleRepository {
     }
 
     /**
-     * Creates a default weekly schedule for a parking space (7 days a week, 24
-     * hours).
+     * Creates a default weekly schedule for a parking space (7 days a week, 24 hours).
      *
      * @param parkingID The ID of the parking space
      * @return true if creation was successful, false otherwise
@@ -327,8 +325,7 @@ public class ParkingScheduleRepository {
             boolean success = true;
             String sql = "INSERT INTO parkingSchedule (DayOfWeek, OpeningTime, ClosingTime, ParkingID) VALUES (?, ?, ?, ?)";
 
-            try (PreparedStatement preparedStatement = connection.prepareStatement(sql,
-                    Statement.RETURN_GENERATED_KEYS)) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 // Create a schedule for each day of the week (1-7, Sunday through Saturday)
                 for (int day = 1; day <= 7; day++) {
                     preparedStatement.setInt(1, day);
@@ -378,6 +375,7 @@ public class ParkingScheduleRepository {
                 resultSet.getInt("DayOfWeek"),
                 resultSet.getTime("OpeningTime"),
                 resultSet.getTime("ClosingTime"),
-                resultSet.getString("ParkingID"));
+                resultSet.getString("ParkingID")
+        );
     }
 }
