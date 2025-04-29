@@ -1,4 +1,4 @@
-package main.java.com.parkeasy.controller.admin;
+package com.parkeasy.controller.admin;
 
 import main.java.com.parkeasy.model.Admin;
 import main.java.com.parkeasy.model.User;
