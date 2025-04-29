@@ -1,583 +1,321 @@
 package main.java.com.parkeasy.service;
 
 import main.java.com.parkeasy.model.User;
-import main.java.com.parkeasy.model.Vehicle;
-import main.java.com.parkeasy.model.Reservation;
-import main.java.com.parkeasy.model.Card;
 import main.java.com.parkeasy.repository.UserRepository;
 import main.java.com.parkeasy.repository.VehicleRepository;
 import main.java.com.parkeasy.repository.ReservationRepository;
-import main.java.com.parkeasy.repository.CardRepository;
-import main.java.com.parkeasy.util.DatabaseConnection;
 
-import java.math.BigDecimal;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Service class for handling user-specific operations in the ParkEasy system.
- * Provides functionality for managing user profiles, vehicles, cards, reservations, and account balance.
+ * Service class for user-related operations
  */
 public class UserService {
+    private static final Logger LOGGER = Logger.getLogger(UserService.class.getName());
 
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
     private final ReservationRepository reservationRepository;
-    private final CardRepository cardRepository;
 
     /**
-     * Constructor for UserService.
+     * Constructor with dependency injection
+     */
+    public UserService(UserRepository userRepository, VehicleRepository vehicleRepository,
+                       ReservationRepository reservationRepository) {
+        this.userRepository = userRepository;
+        this.vehicleRepository = vehicleRepository;
+        this.reservationRepository = reservationRepository;
+    }
+
+    /**
+     * Default constructor
      */
     public UserService() {
         this.userRepository = new UserRepository();
         this.vehicleRepository = new VehicleRepository();
         this.reservationRepository = new ReservationRepository();
-        this.cardRepository = new CardRepository();
     }
 
     /**
-     * Gets a User by their ID.
+     * Create a new user
      *
-     * @param userID The user's unique identifier
-     * @return The User object if found, null otherwise
+     * @param user User object with data to save
+     * @return true if successful, false otherwise
      */
-    public User getUserById(int userID) {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT * FROM USER WHERE UserID = ?";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setInt(1, userID);
-
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        User user = new User();
-                        user.setUserID(resultSet.getInt("UserID"));
-                        user.setUserName(resultSet.getString("UserName"));
-                        user.setEmail(resultSet.getString("Email"));
-                        user.setPhone(resultSet.getString("Phone"));
-                        user.setPassword(resultSet.getString("Password"));
-                        user.setBalance(new BigDecimal(resultSet.getString("Balance")));
-
-                        return user;
-                    }
-                }
-            }
+    public boolean createUser(User user) {
+        try {
+            LOGGER.log(Level.INFO, "Creating new user: {0}", user.getEmail());
+            return userRepository.createUser(user);
         } catch (SQLException e) {
-            System.err.println("Error retrieving user: " + e.getMessage());
-            e.printStackTrace();
-        } catch (IllegalArgumentException e) {
-            System.err.println("Validation error while creating user object: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error creating user", e);
+            return false;
         }
-
-        return null;
     }
 
     /**
-     * Gets a User by their email.
+     * Update an existing user
      *
-     * @param email The user's email address
-     * @return The User object if found, null otherwise
-     */
-    public User getUserByEmail(String email) {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT * FROM USER WHERE Email = ?";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, email);
-
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        User user = new User();
-                        user.setUserID(resultSet.getInt("UserID"));
-                        user.setUserName(resultSet.getString("UserName"));
-                        user.setEmail(resultSet.getString("Email"));
-                        user.setPhone(resultSet.getString("Phone"));
-                        user.setPassword(resultSet.getString("Password"));
-                        user.setBalance(new BigDecimal(resultSet.getString("Balance")));
-
-                        return user;
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error retrieving user by email: " + e.getMessage());
-            e.printStackTrace();
-        } catch (IllegalArgumentException e) {
-            System.err.println("Validation error while creating user object: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
-    /**
-     * Updates a user's profile information in the database.
-     *
-     * @param user The user object with updated information
-     * @return true if update successful, false otherwise
+     * @param user User object with updated data
+     * @return true if successful, false otherwise
      */
     public boolean updateUser(User user) {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "UPDATE USER SET UserName = ?, Email = ?, Phone = ?, Password = ?, Balance = ? WHERE UserID = ?";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, user.getUserName());
-                statement.setString(2, user.getEmail());
-                statement.setString(3, user.getPhone());
-                statement.setString(4, user.getPassword());
-                statement.setBigDecimal(5, user.getBalance());
-                statement.setInt(6, user.getUserID());
-
-                int rowsAffected = statement.executeUpdate();
-                return rowsAffected > 0;
-            }
-        } catch (SQLException e) {
-            System.err.println("Error updating user profile: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks if an email is already taken by another user.
-     *
-     * @param email The email to check
-     * @return true if email is taken, false otherwise
-     */
-    public boolean isEmailTaken(String email) {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT COUNT(*) FROM USER WHERE Email = ?";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, email);
-
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        return resultSet.getInt(1) > 0;
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error checking email: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks if a phone number is already taken by another user.
-     *
-     * @param phone The phone number to check
-     * @return true if phone number is taken, false otherwise
-     */
-    public boolean isPhoneNumberTaken(String phone) {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT COUNT(*) FROM USER WHERE Phone = ?";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, phone);
-
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        return resultSet.getInt(1) > 0;
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error checking phone number: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    /**
-     * Verifies a user's password.
-     *
-     * @param email The user's email
-     * @param password The password to verify
-     * @return true if password is correct, false otherwise
-     */
-    public boolean verifyPassword(String email, String password) {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT Password FROM USER WHERE Email = ?";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, email);
-
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        String storedPassword = resultSet.getString("Password");
-                        return storedPassword.equals(hashPassword(password));
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error verifying password: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    /**
-     * Hashes a password using SHA-256.
-     *
-     * @param password The password to hash
-     * @return The hashed password
-     */
-    public String hashPassword(String password) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(password.getBytes());
-            StringBuilder hexString = new StringBuilder();
-
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
-            }
-
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            System.err.println("Error hashing password: " + e.getMessage());
-            e.printStackTrace();
-            return password; // Fallback to plain text if hashing fails
+            LOGGER.log(Level.INFO, "Updating user: {0}", user.getUserID());
+            return userRepository.updateUser(user);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error updating user", e);
+            return false;
         }
     }
 
     /**
-     * Updates a user's password.
+     * Delete a user by ID
      *
-     * @param userID The user's unique identifier
-     * @param currentPassword The current password (for verification)
-     * @param newPassword The new password
-     * @return true if update successful, false otherwise
+     * @param userId ID of the user to delete
+     * @return true if successful, false otherwise
      */
-    public boolean updatePassword(int userID, String currentPassword, String newPassword) {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            // First get the user
-            User user = getUserById(userID);
+    public boolean deleteUser(int userId) {
+        try {
+            LOGGER.log(Level.INFO, "Deleting user: {0}", userId);
+            return userRepository.deleteUser(userId);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error deleting user", e);
+            return false;
+        }
+    }
+
+    /**
+     * Get a user by ID
+     *
+     * @param userId ID of the user to get
+     * @return User object if found, null otherwise
+     */
+    public User getUserById(int userId) {
+        try {
+            LOGGER.log(Level.FINE, "Getting user by ID: {0}", userId);
+            return userRepository.getUserById(userId);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting user by ID", e);
+            return null;
+        }
+    }
+
+    /**
+     * Get a user by email
+     *
+     * @param email Email of the user to get
+     * @return User object if found, null otherwise
+     */
+    public User getUserByEmail(String email) {
+        LOGGER.log(Level.FINE, "Getting user by email: {0}", email);
+        return userRepository.getUserByEmail(email);
+    }
+
+    /**
+     * Check if an email already exists in the database
+     *
+     * @param email Email to check
+     * @return true if exists, false otherwise
+     */
+    public boolean isEmailExists(String email) {
+        try {
+            return userRepository.isEmailExists(email);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error checking if email exists", e);
+            return false;
+        }
+    }
+
+    /**
+     * Check if a phone number already exists in the database
+     *
+     * @param phone Phone number to check
+     * @return true if exists, false otherwise
+     */
+    public boolean isPhoneExists(String phone) {
+        try {
+            return userRepository.isPhoneExists(phone);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error checking if phone exists", e);
+            return false;
+        }
+    }
+
+    /**
+     * Search for users by name or email
+     *
+     * @param searchTerm Term to search for
+     * @return List of matching users
+     */
+    public List<User> searchUsers(String searchTerm) {
+        try {
+            LOGGER.log(Level.INFO, "Searching users with term: {0}", searchTerm);
+            return userRepository.searchUsers(searchTerm);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error searching users", e);
+            return List.of(); // Return empty list on error
+        }
+    }
+
+    /**
+     * Get all users in the system
+     *
+     * @return List of all users
+     */
+    public List<User> getAllUsers() throws SQLException {
+        try {
+            LOGGER.log(Level.FINE, "Getting all users");
+            return userRepository.findAll();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting all users", e);
+            throw e;
+        }
+    }
+
+    /**
+     * Get user by vehicle ID
+     *
+     * @param vehicleId Vehicle ID
+     * @return User who owns the vehicle, or null if not found
+     */
+    public User getUserByVehicleId(String vehicleId) {
+        try {
+            LOGGER.log(Level.FINE, "Getting user by vehicle ID: {0}", vehicleId);
+            return userRepository.findUserByVehicleId(vehicleId);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting user by vehicle ID", e);
+            return null;
+        }
+    }
+
+    /**
+     * Check if a phone number is already taken by another user
+     *
+     * @param phone Phone number to check
+     * @param currentUserId ID of the current user (to exclude from check)
+     * @return true if taken, false otherwise
+     */
+    public boolean isPhoneNumberTaken(String phone, int currentUserId) {
+        try {
+            // Find user with this phone number
+            User user = userRepository.getUserByPhone(phone);
+
+            // If no user found with this phone, it's not taken
             if (user == null) {
                 return false;
             }
 
-            // Verify current password
-            if (!user.getPassword().equals(hashPassword(currentPassword))) {
+            // If found user ID matches current user ID, it's the same user, so not taken
+            return user.getUserID() != currentUserId;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error checking if phone number is taken", e);
+            return true; // Assume taken on error to be safe
+        }
+    }
+
+    /**
+     * Check if an email is already taken by another user
+     *
+     * @param email Email to check
+     * @param currentUserId ID of the current user (to exclude from check)
+     * @return true if taken, false otherwise
+     */
+    public boolean isEmailTaken(String email, int currentUserId) {
+        // Find user with this email
+        User user = userRepository.getUserByEmail(email);
+
+        // If no user found with this email, it's not taken
+        if (user == null) {
+            return false;
+        }
+
+        // If found user ID matches current user ID, it's the same user, so not taken
+        return user.getUserID() != currentUserId;
+    }
+
+    /**
+     * Check if a user has active reservations
+     *
+     * @param userId The user ID to check
+     * @return true if user has active reservations, false otherwise
+     */
+    public boolean hasActiveReservations(String userId) {
+        try {
+            int userIdInt = Integer.parseInt(userId);
+
+            // SQL query to check if user has active reservations
+            String sql = "SELECT COUNT(*) FROM parking_reservation pr " +
+                    "JOIN vehicle v ON pr.VehicleID = v.VehicleID " +
+                    "WHERE v.UserID = ? AND pr.Status IN ('PENDING', 'PAID', 'ACTIVE')";
+
+            LOGGER.log(Level.INFO, "Executing SQL: {0} with parameter: {1}", new Object[]{sql, userId});
+
+            // Use repository to check if any active reservations
+            int count = reservationRepository.getActiveReservationCountByUserId(userIdInt);
+            return count > 0;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error checking for active reservations for user: " + userId, e);
+            return false; // Assume no active reservations on error
+        }
+    }
+
+    /**
+     * Add funds to user's balance
+     *
+     * @param userId User ID
+     * @param amount Amount to add
+     * @return true if successful, false otherwise
+     */
+    public boolean addFunds(int userId, double amount) {
+        try {
+            if (amount <= 0) {
+                LOGGER.log(Level.WARNING, "Cannot add negative or zero amount: {0}", amount);
                 return false;
             }
 
-            // Update the password
-            user.setPassword(hashPassword(newPassword));
-            return updateUser(user);
-        } catch (SQLException e) {
-            System.err.println("Error updating password: " + e.getMessage());
-            e.printStackTrace();
+            return userRepository.updateBalance(userId, amount);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error adding funds to user account", e);
+            return false;
         }
-
-        return false;
     }
 
     /**
-     * Adds funds to a user's account balance.
+     * Deduct funds from user's balance
      *
-     * @param userID The user's unique identifier
-     * @param amount The amount to add
-     * @return The new balance if update successful, null otherwise
+     * @param userId User ID
+     * @param amount Amount to deduct
+     * @return true if successful, false otherwise
      */
-    public BigDecimal addFunds(int userID, BigDecimal amount) {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            // First get the current balance
-            User user = getUserById(userID);
+    public boolean deductFunds(int userId, double amount) {
+        try {
+            if (amount <= 0) {
+                LOGGER.log(Level.WARNING, "Cannot deduct negative or zero amount: {0}", amount);
+                return false;
+            }
+
+            // Get current balance
+            User user = getUserById(userId);
             if (user == null) {
-                return null;
-            }
-
-            // Validate amount
-            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("Amount must be positive");
-            }
-
-            // Calculate new balance
-            BigDecimal newBalance = user.getBalance().add(amount);
-            user.setBalance(newBalance);
-
-            // Update the user
-            boolean updated = updateUser(user);
-            if (updated) {
-                return newBalance;
-            }
-        } catch (SQLException e) {
-            System.err.println("Error adding funds: " + e.getMessage());
-            e.printStackTrace();
-        } catch (IllegalArgumentException e) {
-            System.err.println("Validation error: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
-    /**
-     * Deducts funds from a user's account balance.
-     *
-     * @param userID The user's unique identifier
-     * @param amount The amount to deduct
-     * @return The new balance if update successful, null otherwise
-     */
-    public BigDecimal deductFunds(int userID, BigDecimal amount) {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            // First get the current balance
-            User user = getUserById(userID);
-            if (user == null) {
-                return null;
-            }
-
-            // Validate amount
-            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("Amount must be positive");
+                return false;
             }
 
             // Check if user has sufficient balance
-            if (user.getBalance().compareTo(amount) < 0) {
-                throw new IllegalArgumentException("Insufficient balance");
+            if (user.getBalance() < amount) {
+                LOGGER.log(Level.WARNING, "Insufficient balance. Required: {0}, Available: {1}",
+                        new Object[]{amount, user.getBalance()});
+                return false;
             }
 
-            // Calculate new balance
-            BigDecimal newBalance = user.getBalance().subtract(amount);
-            user.setBalance(newBalance);
-
-            // Update the user
-            boolean updated = updateUser(user);
-            if (updated) {
-                return newBalance;
-            }
-        } catch (SQLException e) {
-            System.err.println("Error deducting funds: " + e.getMessage());
-            e.printStackTrace();
-        } catch (IllegalArgumentException e) {
-            System.err.println("Validation error: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
-    /**
-     * Gets all vehicles owned by a user.
-     *
-     * @param userID The user's unique identifier
-     * @return List of vehicles owned by the user
-     */
-    public List<Vehicle> getUserVehicles(int userID) {
-        return vehicleRepository.getVehiclesByUserId(userID);
-    }
-
-    /**
-     * Gets a specific vehicle by its ID and user ID.
-     *
-     * @param vehicleID The vehicle's unique identifier
-     * @param userID The user's unique identifier
-     * @return The Vehicle object if found, null otherwise
-     */
-    public Vehicle getVehicleById(String vehicleID, int userID) {
-        Vehicle vehicle = vehicleRepository.getVehicleById(vehicleID);
-        if (vehicle != null && vehicle.getUserID() == userID) {
-            return vehicle;
-        }
-        return null;
-    }
-
-    /**
-     * Adds a new vehicle for a user.
-     *
-     * @param vehicle The vehicle to add
-     * @return true if addition successful, false otherwise
-     */
-    public boolean addVehicle(Vehicle vehicle) {
-        return vehicleRepository.insertVehicle(vehicle);
-    }
-
-    /**
-     * Removes a vehicle for a user.
-     *
-     * @param vehicleID The vehicle's unique identifier
-     * @param userID The user's unique identifier
-     * @return true if removal successful, false otherwise
-     */
-    public boolean removeVehicle(String vehicleID, int userID) {
-        // Check if vehicle belongs to user
-        Vehicle vehicle = vehicleRepository.getVehicleById(vehicleID);
-        if (vehicle == null || vehicle.getUserID() != userID) {
+            // Deduct amount (negative value)
+            return userRepository.updateBalance(userId, -amount);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error deducting funds from user account", e);
             return false;
         }
-
-        // Check for active reservations
-        List<Reservation> vehicleReservations = reservationRepository.getReservationsByVehicleId(vehicleID);
-        for (Reservation reservation : vehicleReservations) {
-            if ("ACTIVE".equals(reservation.getStatus())) {
-                return false; // Cannot remove vehicle with active reservations
-            }
-        }
-
-        return vehicleRepository.deleteVehicle(vehicleID);
-    }
-
-    /**
-     * Gets all cards associated with a user.
-     *
-     * @param userID The user's unique identifier
-     * @return List of cards associated with the user
-     */
-    public List<Card> getUserCards(int userID) {
-        return cardRepository.getCardsByUserId(userID);
-    }
-
-    /**
-     * Adds a new card for a user.
-     *
-     * @param card The card to add
-     * @return true if addition successful, false otherwise
-     */
-    public boolean addCard(Card card) {
-        return cardRepository.insertCard(card);
-    }
-
-    /**
-     * Removes a card for a user.
-     *
-     * @param cardNumber The card's unique identifier
-     * @param userID The user's unique identifier
-     * @return true if removal successful, false otherwise
-     */
-    public boolean removeCard(String cardNumber, int userID) {
-        // Check if card belongs to user
-        Card card = cardRepository.getCardByNumber(cardNumber);
-        if (card == null || card.getUserID() != userID) {
-            return false;
-        }
-
-        return cardRepository.deleteCard(cardNumber);
-    }
-
-    /**
-     * Gets all active reservations for a user.
-     *
-     * @param userID The user's unique identifier
-     * @return List of active reservations for the user
-     */
-    public List<Reservation> getActiveReservations(int userID) {
-        List<Reservation> allReservations = reservationRepository.getReservationsByUserId(userID);
-        List<Reservation> activeReservations = new ArrayList<>();
-
-        for (Reservation reservation : allReservations) {
-            if ("ACTIVE".equals(reservation.getStatus())) {
-                activeReservations.add(reservation);
-            }
-        }
-
-        return activeReservations;
-    }
-
-    /**
-     * Gets the reservation history for a user.
-     *
-     * @param userID The user's unique identifier
-     * @return List of all past reservations for the user
-     */
-    public List<Reservation> getReservationHistory(int userID) {
-        List<Reservation> allReservations = reservationRepository.getReservationsByUserId(userID);
-        List<Reservation> historyReservations = new ArrayList<>();
-
-        for (Reservation reservation : allReservations) {
-            if (!"ACTIVE".equals(reservation.getStatus())) {
-                historyReservations.add(reservation);
-            }
-        }
-
-        return historyReservations;
-    }
-
-    /**
-     * Gets a specific reservation by its ID and user ID.
-     *
-     * @param reservationID The reservation's unique identifier
-     * @param userID The user's unique identifier
-     * @return The Reservation object if found, null otherwise
-     */
-    public Reservation getReservationById(int reservationID, int userID) {
-        Reservation reservation = reservationRepository.getReservationById(reservationID);
-
-        // Check if reservation exists and belongs to user (via vehicle)
-        if (reservation != null) {
-            Vehicle vehicle = vehicleRepository.getVehicleById(reservation.getVehicleID());
-            if (vehicle != null && vehicle.getUserID() == userID) {
-                return reservation;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Cancels a reservation.
-     *
-     * @param reservationID The reservation's unique identifier
-     * @param userID The user's unique identifier
-     * @return true if cancellation successful, false otherwise
-     */
-    public boolean cancelReservation(int reservationID, int userID) {
-        // Check if reservation exists and belongs to user
-        Reservation reservation = getReservationById(reservationID, userID);
-        if (reservation == null) {
-            return false;
-        }
-
-        // Check if reservation is active
-        if (!"ACTIVE".equals(reservation.getStatus())) {
-            return false;
-        }
-
-        return reservationRepository.updateReservationById(reservationID, reservation);
-    }
-
-    /**
-     * Checks if a user has sufficient balance for a payment.
-     *
-     * @param userID The user's unique identifier
-     * @param amount The amount to check against
-     * @return true if user has sufficient balance, false otherwise
-     */
-    public boolean hasSufficientBalance(int userID, BigDecimal amount) {
-        User user = getUserById(userID);
-        if (user == null) {
-            return false;
-        }
-
-        return user.getBalance().compareTo(amount) >= 0;
-    }
-
-    /**
-     * Gets the current account balance for a user.
-     *
-     * @param userID The user's unique identifier
-     * @return The current balance if user found, null otherwise
-     */
-    public BigDecimal getUserBalance(int userID) {
-        User user = getUserById(userID);
-        if (user == null) {
-            return null;
-        }
-
-        return user.getBalance();
     }
 }

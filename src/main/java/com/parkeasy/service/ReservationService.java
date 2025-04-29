@@ -1,706 +1,545 @@
 package main.java.com.parkeasy.service;
 
-import main.java.com.parkeasy.model.ParkingSpace;
 import main.java.com.parkeasy.model.Reservation;
+import main.java.com.parkeasy.model.ParkingSpace;
+import main.java.com.parkeasy.model.ParkingSlot;
+import main.java.com.parkeasy.model.Vehicle;
 import main.java.com.parkeasy.repository.ReservationRepository;
 import main.java.com.parkeasy.repository.ParkingSlotRepository;
-import main.java.com.parkeasy.repository.PaymentRepository;
+import main.java.com.parkeasy.repository.ParkingSpaceRepository;
+import main.java.com.parkeasy.repository.VehicleRepository;
+import main.java.com.parkeasy.util.Constants;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
- * Service class for handling reservation operations in the ParkEasy system.
- * Provides functionality for creating, retrieving, updating, and canceling parking reservations,
- * as well as checking availability and managing reservations for specific parking spaces.
+ * Service class for reservation operations
  */
 public class ReservationService {
+    private static final Logger LOGGER = Logger.getLogger(ReservationService.class.getName());
+
     private final ReservationRepository reservationRepository;
     private final ParkingSlotRepository parkingSlotRepository;
-    private final PaymentRepository paymentRepository;
-
-    private static final String STATUS_ACTIVE = "ACTIVE";
-    private static final String STATUS_CANCELLED = "CANCELLED";
-    private static final String STATUS_COMPLETED = "COMPLETED";
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private final ParkingSpaceRepository parkingSpaceRepository;
+    private final VehicleRepository vehicleRepository;
 
     /**
-     * Constructor for ReservationService.
+     * Constructor with dependency injection
+     */
+    public ReservationService(ReservationRepository reservationRepository,
+                              ParkingSlotRepository parkingSlotRepository,
+                              ParkingSpaceRepository parkingSpaceRepository,
+                              VehicleRepository vehicleRepository) {
+        this.reservationRepository = reservationRepository;
+        this.parkingSlotRepository = parkingSlotRepository;
+        this.parkingSpaceRepository = parkingSpaceRepository;
+        this.vehicleRepository = vehicleRepository;
+    }
+
+    /**
+     * Default constructor
      */
     public ReservationService() {
         this.reservationRepository = new ReservationRepository();
         this.parkingSlotRepository = new ParkingSlotRepository();
-        this.paymentRepository = new PaymentRepository();
+        this.parkingSpaceRepository = new ParkingSpaceRepository();
+        this.vehicleRepository = new VehicleRepository();
     }
 
     /**
-     * Inserts a new reservation into the database.
+     * Create a new reservation
      *
-     * @param reservation The reservation to insert
-     * @return true if insertion successful, false otherwise
+     * @param reservation The reservation to create
+     * @return true if successful, false otherwise
      */
-    public boolean insertReservation(Reservation reservation) {
-        if (reservation == null) {
-            System.err.println("Cannot insert null reservation");
-            return false;
-        }
-
-        if (!validateReservation(reservation)) {
-            System.err.println("Invalid reservation data");
-            return false;
-        }
-
+    public boolean createReservation(Reservation reservation) {
         try {
-            // Check if slot is available for the requested time
-            if (!isSlotAvailable(reservation.getSlotID(),
-                    reservation.getStartDate(),
-                    reservation.getStartTime(),
-                    reservation.getEndDate(),
-                    reservation.getEndTime())) {
-                System.err.println("Slot not available for the requested time period");
+            LOGGER.log(Level.INFO, "Creating new reservation for vehicle: {0}", reservation.getVehicleID());
+
+            // Insert the reservation
+            int reservationId = reservationRepository.insertReservation(reservation);
+
+            return reservationId > 0;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error creating reservation", e);
+            return false;
+        }
+    }
+
+    /**
+     * Generate a unique reservation ID
+     *
+     * @return A unique reservation ID
+     */
+    public int generateReservationId() {
+        // A simple implementation to generate a unique ID
+        // In a real system, you might want to use a more sophisticated approach
+        return (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
+    }
+
+    /**
+     * Get a reservation by ID
+     *
+     * @param reservationId The ID of the reservation
+     * @return The reservation or null if not found
+     */
+    public Reservation getReservationById(int reservationId) {
+        try {
+            LOGGER.log(Level.INFO, "Getting reservation by ID: {0}", reservationId);
+            return reservationRepository.getReservationById(reservationId);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting reservation by ID", e);
+            return null;
+        }
+    }
+
+    /**
+     * Get reservations by vehicle ID
+     *
+     * @param vehicleId The ID of the vehicle
+     * @return List of reservations for the vehicle
+     */
+    public List<Reservation> getReservationsByVehicleId(String vehicleId) {
+        try {
+            LOGGER.log(Level.INFO, "Getting reservations by vehicle ID: {0}", vehicleId);
+            return reservationRepository.getReservationsByVehicleId(vehicleId);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting reservations by vehicle ID", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Get reservations by parking slot number
+     *
+     * @param slotNumber The number of the parking slot
+     * @return List of reservations for the slot
+     */
+    public List<Reservation> getReservationsByParkingSlotNumber(String slotNumber) {
+        try {
+            LOGGER.log(Level.INFO, "Getting reservations by parking slot number: {0}", slotNumber);
+            return reservationRepository.getReservationsByParkingSlotNumber(slotNumber);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting reservations by parking slot number", e);
+            return new ArrayList<>();
+        }
+    }
+
+
+    /**
+     * Get reservations by user ID
+     *
+     * @param userId The ID of the user
+     * @return List of reservations for the user
+     */
+    public List<Reservation> getReservationsByUserId(int userId) {
+        try {
+            LOGGER.log(Level.INFO, "Getting reservations by user ID: {0}", userId);
+            return reservationRepository.getReservationsByUserId(userId);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting reservations by user ID", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Update a reservation
+     *
+     * @param reservation The reservation with updated information
+     * @return true if successful, false otherwise
+     */
+    public boolean updateReservation(Reservation reservation) {
+        try {
+            LOGGER.log(Level.INFO, "Updating reservation: {0}", reservation.getReservationID());
+            return reservationRepository.updateReservationById(reservation.getReservationID(), reservation);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error updating reservation", e);
+            return false;
+        }
+    }
+
+    /**
+     * Cancel a reservation
+     *
+     * @param reservationId The ID of the reservation to cancel
+     * @return true if successful, false otherwise
+     */
+    public boolean cancelReservation(int reservationId) {
+        try {
+            LOGGER.log(Level.INFO, "Cancelling reservation: {0}", reservationId);
+
+            // Get the reservation
+            Reservation reservation = getReservationById(reservationId);
+            if (reservation == null) {
+                LOGGER.log(Level.WARNING, "Reservation not found for cancellation: {0}", reservationId);
                 return false;
             }
 
-            boolean success = reservationRepository.insertReservation(reservation);
+            // Update status to cancelled
+            reservation.setStatus(Constants.RESERVATION_CANCELLED);
+            boolean updated = updateReservation(reservation);
 
-            if (success) {
-                // Update slot availability to false
-                parkingSlotRepository.updateSlotAvailability(reservation.getSlotID(), false);
-            }
-
-            return success;
-        } catch (Exception e) {
-            System.err.println("Error inserting reservation: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    /**
-     * Validates reservation data.
-     *
-     * @param reservation The reservation to validate
-     * @return true if reservation data is valid, false otherwise
-     */
-    private boolean validateReservation(Reservation reservation) {
-        if (reservation.getSlotID() <= 0) {
-            System.err.println("Invalid slot ID");
-            return false;
-        }
-
-        if (reservation.getUserID() <= 0) {
-            System.err.println("Invalid user ID");
-            return false;
-        }
-
-        if (reservation.getVehicleID() == null || reservation.getVehicleID().trim().isEmpty()) {
-            System.err.println("Invalid vehicle ID");
-            return false;
-        }
-
-        if (!isValidDateFormat(reservation.getStartDate()) || !isValidTimeFormat(reservation.getStartTime())) {
-            System.err.println("Invalid start date/time format");
-            return false;
-        }
-
-        if (!isValidDateFormat(reservation.getEndDate()) || !isValidTimeFormat(reservation.getEndTime())) {
-            System.err.println("Invalid end date/time format");
-            return false;
-        }
-
-        // Check that end date/time is after start date/time
-        LocalDateTime startDateTime = parseDateTime(reservation.getStartDate(), reservation.getStartTime());
-        LocalDateTime endDateTime = parseDateTime(reservation.getEndDate(), reservation.getEndTime());
-
-        if (startDateTime == null || endDateTime == null || !endDateTime.isAfter(startDateTime)) {
-            System.err.println("End date/time must be after start date/time");
-            return false;
-        }
-
-        // Check that start date/time is not in the past
-        if (startDateTime.isBefore(LocalDateTime.now())) {
-            System.err.println("Start date/time cannot be in the past");
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Checks if a date string has valid format.
-     *
-     * @param date The date string to check
-     * @return true if format is valid, false otherwise
-     */
-    private boolean isValidDateFormat(String date) {
-        if (date == null || date.trim().isEmpty()) {
-            return false;
-        }
-
-        try {
-            LocalDate.parse(date, DATE_FORMATTER);
-            return true;
-        } catch (DateTimeParseException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Checks if a time string has valid format.
-     *
-     * @param time The time string to check
-     * @return true if format is valid, false otherwise
-     */
-    private boolean isValidTimeFormat(String time) {
-        if (time == null || time.trim().isEmpty()) {
-            return false;
-        }
-
-        try {
-            LocalDateTime.parse("2020-01-01T" + time, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            return true;
-        } catch (DateTimeParseException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Parses date and time strings to LocalDateTime.
-     *
-     * @param date The date string
-     * @param time The time string
-     * @return LocalDateTime object, or null if parsing fails
-     */
-    private LocalDateTime parseDateTime(String date, String time) {
-        try {
-            LocalDate localDate = LocalDate.parse(date, DATE_FORMATTER);
-            int hour = Integer.parseInt(time.split(":")[0]);
-            int minute = Integer.parseInt(time.split(":")[1]);
-            return localDate.atTime(hour, minute);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
-     * Gets a reservation by its ID.
-     *
-     * @param reservationID The ID of the reservation to retrieve
-     * @return The reservation if found, null otherwise
-     */
-    public Reservation getReservationById(int reservationID) {
-        if (reservationID <= 0) {
-            System.err.println("Invalid reservation ID");
-            return null;
-        }
-
-        try {
-            return reservationRepository.getReservationById(reservationID);
-        } catch (Exception e) {
-            System.err.println("Error retrieving reservation: " + e.getMessage());
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    /**
-     * Gets all reservations for a specific vehicle.
-     *
-     * @param vehicleID The ID of the vehicle
-     * @return List of reservations for the vehicle
-     */
-    public List<Reservation> getReservationsByVehicleId(String vehicleID) {
-        if (vehicleID == null || vehicleID.trim().isEmpty()) {
-            System.err.println("Invalid vehicle ID");
-            return Collections.emptyList();
-        }
-
-        try {
-            return reservationRepository.getReservationsByVehicleId(vehicleID);
-        } catch (Exception e) {
-            System.err.println("Error retrieving reservations by vehicle: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
-    }
-
-    /**
-     * Gets all reservations for a specific parking slot.
-     *
-     * @param slotID The ID of the parking slot
-     * @return List of reservations for the slot
-     */
-    public List<Reservation> getReservationsBySlotId(int slotID) {
-        if (slotID <= 0) {
-            System.err.println("Invalid slot ID");
-            return Collections.emptyList();
-        }
-
-        try {
-            return reservationRepository.getReservationsByParkingSlotId(slotID);
-        } catch (Exception e) {
-            System.err.println("Error retrieving reservations by slot: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
-    }
-
-    /**
-     * Gets all reservations for a specific user.
-     *
-     * @param userID The ID of the user
-     * @return List of reservations for the user
-     */
-    public List<Reservation> getReservationsByUser(int userID) {
-        if (userID <= 0) {
-            System.err.println("Invalid user ID");
-            return Collections.emptyList();
-        }
-
-        try {
-            return reservationRepository.getReservationsByUserId(userID);
-        } catch (Exception e) {
-            System.err.println("Error retrieving reservations by user: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
-    }
-
-    /**
-     * Gets all reservations for a specific parking space.
-     *
-     * @param parkingID The ID of the parking space
-     * @return List of reservations for the parking space
-     */
-    public List<Reservation> getReservationsByParkingSpace(String parkingID) {
-        if (parkingID == null || parkingID.trim().isEmpty()) {
-            System.err.println("Invalid parking ID");
-            return Collections.emptyList();
-        }
-
-        try {
-            List<Integer> slotIDs = parkingSlotRepository.getSlotIdsByParkingId(parkingID);
-            List<Reservation> reservations = new ArrayList<>();
-
-            for (Integer slotID : slotIDs) {
-                List<Reservation> slotReservations = getReservationsBySlotId(slotID);
-                reservations.addAll(slotReservations);
-            }
-
-            return reservations;
-        } catch (Exception e) {
-            System.err.println("Error retrieving reservations by parking space: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
-    }
-
-    /**
-     * Gets reservations within a specific date range for a list of parking spaces.
-     *
-     * @param parkingSpaces List of parking spaces
-     * @param startDate Start date for the range (YYYY-MM-DD)
-     * @param endDate End date for the range (YYYY-MM-DD)
-     * @return List of reservations within the date range
-     */
-    public List<Reservation> getReservationsByDateRange(List<ParkingSpace> parkingSpaces, String startDate, String endDate) {
-        if (parkingSpaces == null || parkingSpaces.isEmpty() ||
-                !isValidDateFormat(startDate) || !isValidDateFormat(endDate)) {
-            System.err.println("Invalid parameters for date range search");
-            return Collections.emptyList();
-        }
-
-        try {
-            List<Reservation> allReservations = new ArrayList<>();
-
-            for (ParkingSpace space : parkingSpaces) {
-                List<Integer> slotIDs = parkingSlotRepository.getSlotIdsByParkingId(space.getParkingID());
-                for (Integer slotID : slotIDs) {
-                    List<Reservation> slotReservations = reservationRepository.getReservationsByDateRange(
-                            slotID, startDate, endDate);
-                    allReservations.addAll(slotReservations);
+            if (updated) {
+                // Make the slot available again
+                ParkingSlot slot = parkingSlotRepository.findParkingSlotByNumber(reservation.getSlotNumber());
+                if (slot != null) {
+                    slot.setAvailability(true);
+                    parkingSlotRepository.updateParkingSlot(slot);
                 }
             }
 
-            return allReservations;
+            return updated;
         } catch (Exception e) {
-            System.err.println("Error retrieving reservations by date range: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
-    }
-
-    /**
-     * Deletes a reservation by its ID.
-     *
-     * @param reservationID The ID of the reservation to delete
-     * @return true if deletion successful, false otherwise
-     */
-    public boolean deleteReservationById(int reservationID) {
-        if (reservationID <= 0) {
-            System.err.println("Invalid reservation ID");
-            return false;
-        }
-
-        try {
-            Reservation reservation = getReservationById(reservationID);
-            if (reservation == null) {
-                System.err.println("Reservation not found");
-                return false;
-            }
-
-            boolean success = reservationRepository.deleteReservationById(reservationID);
-
-            if (success && STATUS_ACTIVE.equals(reservation.getStatus())) {
-                // Free up the parking slot if reservation was active
-                parkingSlotRepository.updateSlotAvailability(reservation.getSlotID(), true);
-            }
-
-            return success;
-        } catch (Exception e) {
-            System.err.println("Error deleting reservation: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error cancelling reservation", e);
             return false;
         }
     }
 
     /**
-     * Updates a reservation by its ID.
+     * Check if a parking slot is available for a specific time period
      *
-     * @param reservationID The ID of the reservation to update
-     * @param reservation The updated reservation data
-     * @return true if update successful, false otherwise
+     * @param slotNumber The number of the slot
+     * @param startDateTime Start date and time
+     * @param endDateTime End date and time
+     * @return true if available, false otherwise
      */
-    public boolean updateReservationById(int reservationID, Reservation reservation) {
-        if (reservationID <= 0 || reservation == null) {
-            System.err.println("Invalid parameters for reservation update");
-            return false;
-        }
-
-        if (reservation.getReservationID() != reservationID) {
-            System.err.println("Reservation ID mismatch");
-            return false;
-        }
-
-        if (!validateReservation(reservation)) {
-            System.err.println("Invalid reservation data for update");
-            return false;
-        }
-
+    public boolean isSlotAvailableForPeriod(String slotNumber, LocalDateTime startDateTime, LocalDateTime endDateTime) {
         try {
-            // Get current reservation
-            Reservation currentReservation = getReservationById(reservationID);
-            if (currentReservation == null) {
-                System.err.println("Reservation not found");
+            LOGGER.log(Level.INFO, "Checking slot availability for period: {0}", slotNumber);
+
+            // Get the slot
+            ParkingSlot slot = parkingSlotRepository.findParkingSlotByNumber(slotNumber);
+            if (slot == null || !slot.getAvailability()) {
+                // Slot doesn't exist or is not available
                 return false;
             }
 
-            // If we're changing the slot or time, check availability
-            if (reservation.getSlotID() != currentReservation.getSlotID() ||
-                    !reservation.getStartDate().equals(currentReservation.getStartDate()) ||
-                    !reservation.getStartTime().equals(currentReservation.getStartTime()) ||
-                    !reservation.getEndDate().equals(currentReservation.getEndDate()) ||
-                    !reservation.getEndTime().equals(currentReservation.getEndTime())) {
+            // Get active reservations for this slot
+            List<Reservation> reservations = reservationRepository.getReservationsByParkingSlotNumber(slotNumber);
 
-                // Check if new slot is available
-                if (!isSlotAvailable(reservation.getSlotID(),
-                        reservation.getStartDate(),
-                        reservation.getStartTime(),
-                        reservation.getEndDate(),
-                        reservation.getEndTime())) {
-                    System.err.println("New slot/time not available");
+            // Filter for active reservations
+            List<Reservation> activeReservations = reservations.stream()
+                    .filter(res -> res.getStatus().equals(Constants.RESERVATION_PENDING) ||
+                            res.getStatus().equals(Constants.RESERVATION_PAID) ||
+                            res.getStatus().equals(Constants.RESERVATION_ACTIVE))
+                    .collect(Collectors.toList());
+
+            // Check for overlapping reservations
+            for (Reservation res : activeReservations) {
+                // Convert SQL dates to LocalDateTime
+                LocalDateTime resStart = LocalDateTime.of(
+                        res.getStartDate().toLocalDate(),
+                        res.getStartTime().toLocalTime()
+                );
+
+                LocalDateTime resEnd = LocalDateTime.of(
+                        res.getEndDate().toLocalDate(),
+                        res.getEndTime().toLocalTime()
+                );
+
+                // Check if there is an overlap
+                if (!(endDateTime.isBefore(resStart) || startDateTime.isAfter(resEnd))) {
+                    // There is an overlap
                     return false;
                 }
             }
 
-            boolean success = reservationRepository.updateReservationById(reservationID, reservation);
-
-            if (success) {
-                // If status changed from active, update slot availability
-                if (STATUS_ACTIVE.equals(currentReservation.getStatus()) &&
-                        !STATUS_ACTIVE.equals(reservation.getStatus())) {
-                    parkingSlotRepository.updateSlotAvailability(currentReservation.getSlotID(), true);
-                }
-
-                // If slot changed, update old and new slot availability
-                if (reservation.getSlotID() != currentReservation.getSlotID()) {
-                    if (STATUS_ACTIVE.equals(currentReservation.getStatus())) {
-                        parkingSlotRepository.updateSlotAvailability(currentReservation.getSlotID(), true);
-                    }
-                    if (STATUS_ACTIVE.equals(reservation.getStatus())) {
-                        parkingSlotRepository.updateSlotAvailability(reservation.getSlotID(), false);
-                    }
-                }
-            }
-
-            return success;
+            // No overlapping reservations found
+            return true;
         } catch (Exception e) {
-            System.err.println("Error updating reservation: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error checking slot availability for period", e);
             return false;
         }
     }
 
     /**
-     * Cancels a reservation.
+     * Get active reservations for a vehicle
      *
-     * @param reservationID The ID of the reservation to cancel
-     * @return true if cancellation successful, false otherwise
-     */
-    public boolean cancelReservation(int reservationID) {
-        if (reservationID <= 0) {
-            System.err.println("Invalid reservation ID");
-            return false;
-        }
-
-        try {
-            Reservation reservation = getReservationById(reservationID);
-            if (reservation == null) {
-                System.err.println("Reservation not found");
-                return false;
-            }
-
-            if (!STATUS_ACTIVE.equals(reservation.getStatus())) {
-                System.err.println("Cannot cancel non-active reservation");
-                return false;
-            }
-
-            reservation.setStatus(STATUS_CANCELLED);
-            boolean updated = updateReservationById(reservationID, reservation);
-
-            if (updated) {
-                // Update slot availability
-                return parkingSlotRepository.updateSlotAvailability(reservation.getSlotID(), true);
-            }
-
-            return false;
-        } catch (Exception e) {
-            System.err.println("Error cancelling reservation: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    /**
-     * Gets payment amount for a reservation.
-     *
-     * @param reservationID The ID of the reservation
-     * @return The payment amount, or BigDecimal.ZERO if no payment found
-     */
-    public BigDecimal getPaymentAmount(int reservationID) {
-        if (reservationID <= 0) {
-            System.err.println("Invalid reservation ID");
-            return BigDecimal.ZERO;
-        }
-
-        try {
-            BigDecimal amount = paymentRepository.getPaymentAmountByReservation(reservationID);
-            return amount != null ? amount : BigDecimal.ZERO;
-        } catch (Exception e) {
-            System.err.println("Error retrieving payment amount: " + e.getMessage());
-            e.printStackTrace();
-            return BigDecimal.ZERO;
-        }
-    }
-
-    /**
-     * Gets the parking space ID from a slot ID.
-     *
-     * @param slotID The ID of the parking slot
-     * @return The parking space ID if found, null otherwise
-     */
-    public String getParkingIDFromSlot(int slotID) {
-        if (slotID <= 0) {
-            System.err.println("Invalid slot ID");
-            return null;
-        }
-
-        try {
-            return parkingSlotRepository.getParkingIdBySlotId(slotID);
-        } catch (Exception e) {
-            System.err.println("Error retrieving parking ID from slot: " + e.getMessage());
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    /**
-     * Checks if a parking slot is available for a given time period.
-     *
-     * @param slotID The ID of the parking slot
-     * @param startDate Start date (YYYY-MM-DD)
-     * @param startTime Start time (HH:MM)
-     * @param endDate End date (YYYY-MM-DD)
-     * @param endTime End time (HH:MM)
-     * @return true if slot is available, false otherwise
-     */
-    public boolean isSlotAvailable(int slotID, String startDate, String startTime, String endDate, String endTime) {
-        if (slotID <= 0 ||
-                !isValidDateFormat(startDate) || !isValidTimeFormat(startTime) ||
-                !isValidDateFormat(endDate) || !isValidTimeFormat(endTime)) {
-            System.err.println("Invalid parameters for slot availability check");
-            return false;
-        }
-
-        try {
-            return reservationRepository.checkSlotAvailability(slotID, startDate, startTime, endDate, endTime);
-        } catch (Exception e) {
-            System.err.println("Error checking slot availability: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    /**
-     * Finds available slots in a parking space for a given time period.
-     *
-     * @param parkingID The ID of the parking space
-     * @param startDate Start date (YYYY-MM-DD)
-     * @param startTime Start time (HH:MM)
-     * @param endDate End date (YYYY-MM-DD)
-     * @param endTime End time (HH:MM)
-     * @return List of available slot IDs
-     */
-    public List<Integer> findAvailableSlots(String parkingID, String startDate, String startTime, String endDate, String endTime) {
-        if (parkingID == null || parkingID.trim().isEmpty() ||
-                !isValidDateFormat(startDate) || !isValidTimeFormat(startTime) ||
-                !isValidDateFormat(endDate) || !isValidTimeFormat(endTime)) {
-            System.err.println("Invalid parameters for available slots search");
-            return Collections.emptyList();
-        }
-
-        try {
-            List<Integer> allSlots = parkingSlotRepository.getSlotIdsByParkingId(parkingID);
-            List<Integer> availableSlots = new ArrayList<>();
-
-            for (Integer slotID : allSlots) {
-                if (isSlotAvailable(slotID, startDate, startTime, endDate, endTime)) {
-                    availableSlots.add(slotID);
-                }
-            }
-
-            return availableSlots;
-        } catch (Exception e) {
-            System.err.println("Error finding available slots: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
-    }
-
-    /**
-     * Gets all active reservations in the system.
-     *
+     * @param vehicleId The ID of the vehicle
      * @return List of active reservations
      */
-    public List<Reservation> getActiveReservations() {
+    public List<Reservation> getActiveReservationsByVehicleId(String vehicleId) {
         try {
-            return reservationRepository.getReservationsByStatus(STATUS_ACTIVE);
+            LOGGER.log(Level.INFO, "Getting active reservations for vehicle: {0}", vehicleId);
+
+            List<Reservation> allReservations = getReservationsByVehicleId(vehicleId);
+
+            // Filter for active reservations
+            return allReservations.stream()
+                    .filter(res -> res.getStatus().equals(Constants.RESERVATION_PENDING) ||
+                            res.getStatus().equals(Constants.RESERVATION_PAID) ||
+                            res.getStatus().equals(Constants.RESERVATION_ACTIVE))
+                    .collect(Collectors.toList());
         } catch (Exception e) {
-            System.err.println("Error retrieving active reservations: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
+            LOGGER.log(Level.SEVERE, "Error getting active reservations for vehicle", e);
+            return new ArrayList<>();
         }
     }
 
     /**
-     * Gets all reservations with a specific status.
+     * Get the current active reservation for a vehicle
      *
-     * @param status The status to filter by
-     * @return List of reservations with the specified status
+     * @param vehicleId The ID of the vehicle
+     * @return The current active reservation or null if none
      */
-    public List<Reservation> getReservationsByStatus(String status) {
-        if (status == null || status.trim().isEmpty()) {
-            System.err.println("Invalid status");
-            return Collections.emptyList();
-        }
-
+    public Reservation getCurrentActiveReservationForVehicle(String vehicleId) {
         try {
-            return reservationRepository.getReservationsByStatus(status);
-        } catch (Exception e) {
-            System.err.println("Error retrieving reservations by status: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
-    }
+            LOGGER.log(Level.INFO, "Getting current active reservation for vehicle: {0}", vehicleId);
 
-    /**
-     * Gets upcoming reservations for a user.
-     *
-     * @param userID The ID of the user
-     * @return List of upcoming reservations
-     */
-    public List<Reservation> getUpcomingReservations(int userID) {
-        if (userID <= 0) {
-            System.err.println("Invalid user ID");
-            return Collections.emptyList();
-        }
-
-        try {
-            List<Reservation> userReservations = getReservationsByUser(userID);
-            List<Reservation> upcomingReservations = new ArrayList<>();
+            List<Reservation> activeReservations = getActiveReservationsByVehicleId(vehicleId);
             LocalDateTime now = LocalDateTime.now();
 
-            for (Reservation reservation : userReservations) {
-                if (STATUS_ACTIVE.equals(reservation.getStatus())) {
-                    LocalDateTime startDateTime = parseDateTime(reservation.getStartDate(), reservation.getStartTime());
-                    if (startDateTime != null && startDateTime.isAfter(now)) {
-                        upcomingReservations.add(reservation);
+            // Find the reservation that is currently active (start time <= now < end time)
+            for (Reservation res : activeReservations) {
+                LocalDateTime resStart = LocalDateTime.of(
+                        res.getStartDate().toLocalDate(),
+                        res.getStartTime().toLocalTime()
+                );
+
+                LocalDateTime resEnd = LocalDateTime.of(
+                        res.getEndDate().toLocalDate(),
+                        res.getEndTime().toLocalTime()
+                );
+
+                if (!now.isBefore(resStart) && now.isBefore(resEnd)) {
+                    return res;
+                }
+            }
+
+            return null;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting current active reservation for vehicle", e);
+            return null;
+        }
+    }
+
+    /**
+     * Check if a vehicle is currently parked
+     *
+     * @param vehicleId The ID of the vehicle
+     * @return true if currently parked, false otherwise
+     */
+    public boolean isVehicleCurrentlyParked(String vehicleId) {
+        return getCurrentActiveReservationForVehicle(vehicleId) != null;
+    }
+
+    /**
+     * Count active reservations for a user
+     *
+     * @param userId The ID of the user
+     * @return Count of active reservations
+     */
+    public int countActiveReservationsForUser(int userId) {
+        try {
+            LOGGER.log(Level.INFO, "Counting active reservations for user: {0}", userId);
+            return reservationRepository.getActiveReservationCountByUserId(userId);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error counting active reservations for user", e);
+            return 0;
+        }
+    }
+
+    /**
+     * Count total reservations for a user
+     *
+     * @param userId The ID of the user
+     * @return Count of total reservations
+     */
+    public int countTotalReservationsForUser(int userId) {
+        try {
+            LOGGER.log(Level.INFO, "Counting total reservations for user: {0}", userId);
+
+            List<Reservation> reservations = getReservationsByUserId(userId);
+            return reservations.size();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error counting total reservations for user", e);
+            return 0;
+        }
+    }
+
+    /**
+     * Count pending payment reservations for a user
+     *
+     * @param userId The ID of the user
+     * @return Count of pending payment reservations
+     */
+    public int countPendingPaymentReservationsForUser(int userId) {
+        try {
+            LOGGER.log(Level.INFO, "Counting pending payment reservations for user: {0}", userId);
+
+            List<Reservation> reservations = getReservationsByUserId(userId);
+
+            return (int) reservations.stream()
+                    .filter(res -> res.getStatus().equals(Constants.RESERVATION_PENDING))
+                    .count();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error counting pending payment reservations for user", e);
+            return 0;
+        }
+    }
+
+    /**
+     * Get recent reservations for a user
+     *
+     * @param userId The ID of the user
+     * @param limit Maximum number of reservations to return
+     * @return List of recent reservations
+     */
+    public List<Reservation> getRecentReservationsForUser(int userId, int limit) {
+        try {
+            LOGGER.log(Level.INFO, "Getting recent reservations for user: {0}, limit: {1}", new Object[]{userId, limit});
+
+            List<Reservation> reservations = getReservationsByUserId(userId);
+
+            // Sort by creation time (most recent first) and limit
+            return reservations.stream()
+                    .sorted((r1, r2) -> r2.getCreatedAt().compareTo(r1.getCreatedAt()))
+                    .limit(limit)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting recent reservations for user", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Get IDs of recently used parking spaces by a user
+     *
+     * @param userId The ID of the user
+     * @param limit Maximum number of parking space IDs to return
+     * @return List of parking space IDs
+     */
+    public List<String> getRecentParkingSpaceIdsForUser(int userId, int limit) {
+        try {
+            LOGGER.log(Level.INFO, "Getting recent parking space IDs for user: {0}, limit: {1}", new Object[]{userId, limit});
+
+            List<Reservation> reservations = getRecentReservationsForUser(userId, limit * 2); // Get more to account for duplicates
+
+            // Extract parking IDs from reservations
+            List<String> parkingIds = new ArrayList<>();
+            for (Reservation res : reservations) {
+                String slotNumber = res.getSlotNumber();
+                ParkingSlot slot = parkingSlotRepository.findParkingSlotByNumber(slotNumber);
+
+                if (slot != null) {
+                    String parkingId = slot.getParkingID();
+
+                    // Add if not already in the list
+                    if (!parkingIds.contains(parkingId)) {
+                        parkingIds.add(parkingId);
+
+                        // Break if we've reached the limit
+                        if (parkingIds.size() >= limit) {
+                            break;
+                        }
                     }
                 }
             }
 
-            return upcomingReservations;
+            return parkingIds;
         } catch (Exception e) {
-            System.err.println("Error retrieving upcoming reservations: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
+            LOGGER.log(Level.SEVERE, "Error getting recent parking space IDs for user", e);
+            return new ArrayList<>();
         }
     }
 
     /**
-     * Completes a reservation.
+     * Get IDs of frequently used parking spaces by a user
      *
-     * @param reservationID The ID of the reservation to complete
-     * @return true if completion successful, false otherwise
+     * @param userId The ID of the user
+     * @param limit Maximum number of parking space IDs to return
+     * @return List of parking space IDs
      */
-    public boolean completeReservation(int reservationID) {
-        if (reservationID <= 0) {
-            System.err.println("Invalid reservation ID");
-            return false;
-        }
-
+    public List<String> getFrequentParkingSpaceIdsForUser(int userId, int limit) {
         try {
-            Reservation reservation = getReservationById(reservationID);
-            if (reservation == null) {
-                System.err.println("Reservation not found");
-                return false;
+            LOGGER.log(Level.INFO, "Getting frequent parking space IDs for user: {0}, limit: {1}", new Object[]{userId, limit});
+
+            List<Reservation> reservations = getReservationsByUserId(userId);
+
+            // Count occurrences of each parking ID
+            Map<String, Integer> parkingIdCounts = new HashMap<>();
+
+            for (Reservation res : reservations) {
+                String slotNumber = res.getSlotNumber();
+                ParkingSlot slot = parkingSlotRepository.findParkingSlotByNumber(slotNumber);
+
+                if (slot != null) {
+                    String parkingId = slot.getParkingID();
+                    parkingIdCounts.put(parkingId, parkingIdCounts.getOrDefault(parkingId, 0) + 1);
+                }
             }
 
-            if (!STATUS_ACTIVE.equals(reservation.getStatus())) {
-                System.err.println("Cannot complete non-active reservation");
-                return false;
-            }
-
-            reservation.setStatus(STATUS_COMPLETED);
-            boolean updated = updateReservationById(reservationID, reservation);
-
-            if (updated) {
-                // Update slot availability
-                return parkingSlotRepository.updateSlotAvailability(reservation.getSlotID(), true);
-            }
-
-            return false;
+            // Sort by count (most frequent first) and get IDs
+            return parkingIdCounts.entrySet().stream()
+                    .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                    .limit(limit)
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
         } catch (Exception e) {
-            System.err.println("Error completing reservation: " + e.getMessage());
-            e.printStackTrace();
-            return false;
+            LOGGER.log(Level.SEVERE, "Error getting frequent parking space IDs for user", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Get the parking ID by slot number
+     *
+     * @param slotNumber The number of the slot
+     * @return The parking ID or null if not found
+     */
+    public String getParkingIdBySlotNumber(String slotNumber) {
+        try {
+            LOGGER.log(Level.FINE, "Getting parking ID by slot number: {0}", slotNumber);
+            return parkingSlotRepository.getParkingIdBySlotNumber(slotNumber);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting parking ID by slot number", e);
+            return null;
+        }
+    }
+
+    /**
+     * Get the parking address by parking ID
+     *
+     * @param parkingId The ID of the parking space
+     * @return The address or "Unknown" if not found
+     */
+    public String getParkingAddressByParkingId(String parkingId) {
+        try {
+            LOGGER.log(Level.FINE, "Getting parking address by parking ID: {0}", parkingId);
+
+            ParkingSpace space = parkingSpaceRepository.getParkingSpaceById(parkingId);
+            return space != null ? space.getParkingAddress() : "Unknown";
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting parking address by parking ID", e);
+            return "Unknown";
+        }
+    }
+
+    /**
+     * Get the hourly rate for a parking space
+     *
+     * @param parkingId The ID of the parking space
+     * @return The hourly rate or 0 if not found
+     */
+    public double getParkingHourlyRate(String parkingId) {
+        try {
+            LOGGER.log(Level.FINE, "Getting hourly rate for parking ID: {0}", parkingId);
+
+            ParkingSpace space = parkingSpaceRepository.getParkingSpaceById(parkingId);
+            return space != null ? space.getCostOfParking() : 0.0;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting hourly rate for parking", e);
+            return 0.0;
         }
     }
 }

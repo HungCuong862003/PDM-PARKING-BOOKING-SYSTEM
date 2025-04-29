@@ -1,375 +1,452 @@
 package main.java.com.parkeasy.repository;
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 import main.java.com.parkeasy.model.ParkingSlot;
+import main.java.com.parkeasy.model.ParkingSpace;
 import main.java.com.parkeasy.util.DatabaseConnection;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-/**
- * Repository class for managing ParkingSlot entities in the database.
- * Provides CRUD operations for parking slots.
- */
 public class ParkingSlotRepository {
+    private static final Logger LOGGER = Logger.getLogger(ParkingSlotRepository.class.getName());
+    private String sql;
+    private Connection connection;
 
-    /**
-     * Inserts a new parking slot into the database.
-     *
-     * @param parkingSlot The parking slot to insert
-     * @return true if insertion was successful, false otherwise
-     */
-    public boolean insertParkingSlot(ParkingSlot parkingSlot) {
-        String sql = "INSERT INTO parkingSlot (SlotID, SlotNumber, Availability, ParkingID) VALUES (?, ?, ?, ?)";
+    public boolean addParkingSlot(ParkingSlot slot) {
+        connection = DatabaseConnection.getConnection();
+        sql = "INSERT INTO PARKING_SLOT (SlotNumber, Availability, ParkingID) VALUES (?, ?, ?)";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, slot.getSlotNumber());
+            preparedStatement.setBoolean(2, slot.getAvailability());
+            preparedStatement.setString(3, slot.getParkingID());
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setInt(1, parkingSlot.getSlotID());
-            preparedStatement.setString(2, parkingSlot.getSlotNumber());
-            preparedStatement.setBoolean(3, parkingSlot.isAvailability());
-            preparedStatement.setString(4, parkingSlot.getParkingID());
-
-            int rowsAffected = preparedStatement.executeUpdate();
-            return rowsAffected > 0;
-
+            int affectedRows = preparedStatement.executeUpdate();
+            return affectedRows > 0;
         } catch (SQLException e) {
-            System.err.println("Error inserting parking slot: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error adding parking slot", e);
             return false;
+        } finally {
+            DatabaseConnection.closeConnection(connection);
         }
     }
 
-    /**
-     * Retrieves a parking slot by its ID.
-     *
-     * @param slotID The ID of the parking slot to retrieve
-     * @return The found ParkingSlot or null if not found
-     */
-    public ParkingSlot getParkingSlotById(int slotID) {
-        String sql = "SELECT * FROM parkingSlot WHERE SlotID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setInt(1, slotID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return extractParkingSlotFromResultSet(resultSet);
-                }
-            }
-
+    // Update by SlotNumber
+    public boolean updateParkingSlotByNumber(String slotNumber, ParkingSlot parkingSlot) {
+        connection = DatabaseConnection.getConnection();
+        sql = "UPDATE PARKING_SLOT SET Availability = ?, ParkingID = ? WHERE SlotNumber = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setBoolean(1, parkingSlot.getAvailability());
+            preparedStatement.setString(2, parkingSlot.getParkingID());
+            preparedStatement.setString(3, slotNumber);
+            int rowsUpdated = preparedStatement.executeUpdate();
+            return rowsUpdated > 0;
         } catch (SQLException e) {
-            System.err.println("Error retrieving parking slot by ID: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error updating parking slot by number", e);
+            return false;
+        } finally {
+            DatabaseConnection.closeConnection(connection);
         }
-
-        return null;
     }
 
-    /**
-     * Retrieves all parking slots for a specific parking space.
-     *
-     * @param parkingID The ID of the parking space
-     * @return A list of parking slots belonging to the specified parking space
-     */
-    public List<ParkingSlot> getParkingSlotsByParkingSpaceId(String parkingID) {
+    // Update using the parking slot object
+    public boolean updateParkingSlot(ParkingSlot parkingSlot) {
+        connection = DatabaseConnection.getConnection();
+        sql = "UPDATE PARKING_SLOT SET Availability = ?, ParkingID = ? WHERE SlotNumber = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setBoolean(1, parkingSlot.getAvailability());
+            preparedStatement.setString(2, parkingSlot.getParkingID());
+            preparedStatement.setString(3, parkingSlot.getSlotNumber());
+            int rowsUpdated = preparedStatement.executeUpdate();
+            return rowsUpdated > 0;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error updating parking slot", e);
+            return false;
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+    }
+
+    // Get all parking slots - maintain backward compatibility
+    public void getAllParkingSlots() {
+        List<ParkingSlot> slots = getAllParkingSlotsAsList();
+        for (ParkingSlot slot : slots) {
+            System.out.println("Slot Number: " + slot.getSlotNumber());
+            System.out.println("Availability: " + slot.getAvailability());
+            System.out.println("Parking ID: " + slot.getParkingID());
+        }
+    }
+
+    // Get all parking slots as list
+    public List<ParkingSlot> getAllParkingSlotsAsList() {
         List<ParkingSlot> parkingSlots = new ArrayList<>();
-        String sql = "SELECT * FROM parkingSlot WHERE ParkingID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setString(1, parkingID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    parkingSlots.add(extractParkingSlotFromResultSet(resultSet));
-                }
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error retrieving parking slots by parking space ID: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return parkingSlots;
-    }
-
-    /**
-     * Retrieves all available parking slots for a specific parking space.
-     *
-     * @param parkingID The ID of the parking space
-     * @return A list of available parking slots belonging to the specified parking space
-     */
-    public List<ParkingSlot> getAvailableParkingSlotsByParkingSpaceId(String parkingID) {
-        List<ParkingSlot> parkingSlots = new ArrayList<>();
-        String sql = "SELECT * FROM parkingSlot WHERE ParkingID = ? AND Availability = true";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setString(1, parkingID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    parkingSlots.add(extractParkingSlotFromResultSet(resultSet));
-                }
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error retrieving available parking slots: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return parkingSlots;
-    }
-
-    /**
-     * Deletes a parking slot by its ID.
-     *
-     * @param slotID The ID of the parking slot to delete
-     * @return true if deletion was successful, false otherwise
-     */
-    public boolean deleteParkingSlotById(int slotID) {
-        String sql = "DELETE FROM parkingSlot WHERE SlotID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setInt(1, slotID);
-
-            int rowsAffected = preparedStatement.executeUpdate();
-            return rowsAffected > 0;
-
-        } catch (SQLException e) {
-            System.err.println("Error deleting parking slot: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    /**
-     * Updates a parking slot's information by its ID.
-     *
-     * @param slotID The ID of the parking slot to update
-     * @param parkingSlot The updated parking slot information
-     * @return true if update was successful, false otherwise
-     */
-    public boolean updateParkingSlotById(int slotID, ParkingSlot parkingSlot) {
-        String sql = "UPDATE parkingSlot SET SlotNumber = ?, Availability = ?, ParkingID = ? WHERE SlotID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setString(1, parkingSlot.getSlotNumber());
-            preparedStatement.setBoolean(2, parkingSlot.isAvailability());
-            preparedStatement.setString(3, parkingSlot.getParkingID());
-            preparedStatement.setInt(4, slotID);
-
-            int rowsAffected = preparedStatement.executeUpdate();
-            return rowsAffected > 0;
-
-        } catch (SQLException e) {
-            System.err.println("Error updating parking slot: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    /**
-     * Updates the availability status of a parking slot.
-     *
-     * This method is used by ReservationService to update slot availability.
-     *
-     * @param slotID The ID of the parking slot
-     * @param availability The new availability status
-     * @return true if update was successful, false otherwise
-     */
-    public boolean updateParkingSlotAvailability(int slotID, boolean availability) {
-        String sql = "UPDATE parkingSlot SET Availability = ? WHERE SlotID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setBoolean(1, availability);
-            preparedStatement.setInt(2, slotID);
-
-            int rowsAffected = preparedStatement.executeUpdate();
-            return rowsAffected > 0;
-
-        } catch (SQLException e) {
-            System.err.println("Error updating parking slot availability: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    /**
-     * Updates the availability status of a parking slot.
-     * This is an alias for updateParkingSlotAvailability to maintain compatibility with ReservationService.
-     *
-     * @param slotID The ID of the parking slot
-     * @param availability The new availability status
-     * @return true if update was successful, false otherwise
-     */
-    public boolean updateSlotAvailability(int slotID, boolean availability) {
-        return updateParkingSlotAvailability(slotID, availability);
-    }
-
-    /**
-     * Retrieves slot IDs for a specific parking space.
-     * This method is used by ReservationService to get all slot IDs for a parking space.
-     *
-     * @param parkingID The ID of the parking space
-     * @return A list of slot IDs belonging to the specified parking space
-     */
-    public List<Integer> getSlotIdsByParkingId(String parkingID) {
-        List<Integer> slotIDs = new ArrayList<>();
-        String sql = "SELECT SlotID FROM parkingSlot WHERE ParkingID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setString(1, parkingID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    slotIDs.add(resultSet.getInt("SlotID"));
-                }
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error retrieving slot IDs by parking ID: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return slotIDs;
-    }
-
-    /**
-     * Retrieves the parking ID for a specific slot.
-     * This method is used by ReservationService to get the parking space ID for a slot.
-     *
-     * @param slotID The ID of the parking slot
-     * @return The parking space ID, or null if not found
-     */
-    public String getParkingIdBySlotId(int slotID) {
-        String sql = "SELECT ParkingID FROM parkingSlot WHERE SlotID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setInt(1, slotID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getString("ParkingID");
-                }
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error retrieving parking ID by slot ID: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
-    /**
-     * Counts the total number of parking slots for a specific parking space.
-     *
-     * @param parkingID The ID of the parking space
-     * @return The count of parking slots
-     */
-    public int countParkingSlotsByParkingSpaceId(String parkingID) {
-        String sql = "SELECT COUNT(*) FROM parkingSlot WHERE ParkingID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setString(1, parkingID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt(1);
-                }
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error counting parking slots: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return 0;
-    }
-
-    /**
-     * Counts the number of available parking slots for a specific parking space.
-     *
-     * @param parkingID The ID of the parking space
-     * @return The count of available parking slots
-     */
-    public int countAvailableParkingSlotsByParkingSpaceId(String parkingID) {
-        String sql = "SELECT COUNT(*) FROM parkingSlot WHERE ParkingID = ? AND Availability = true";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setString(1, parkingID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt(1);
-                }
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error counting available parking slots: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return 0;
-    }
-
-    /**
-     * Retrieves all parking slots from the database.
-     *
-     * @return A list of all parking slots
-     */
-    public List<ParkingSlot> getAllParkingSlots() {
-        List<ParkingSlot> parkingSlots = new ArrayList<>();
-        String sql = "SELECT * FROM parkingSlot";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
-
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT * FROM PARKING_SLOT";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql);
+             ResultSet resultSet = preparedStatement.executeQuery()) {
             while (resultSet.next()) {
-                parkingSlots.add(extractParkingSlotFromResultSet(resultSet));
+                ParkingSlot slot = new ParkingSlot(
+                        resultSet.getString("SlotNumber"),
+                        resultSet.getBoolean("Availability"),
+                        resultSet.getString("ParkingID")
+                );
+                parkingSlots.add(slot);
             }
-
         } catch (SQLException e) {
-            System.err.println("Error retrieving all parking slots: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting all parking slots", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
         }
+        return parkingSlots;
+    }
 
+    // Find by SlotNumber (main method to use now)
+    public ParkingSlot findParkingSlotByNumber(String slotNumber) {
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT * FROM PARKING_SLOT WHERE SlotNumber = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, slotNumber);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return new ParkingSlot(
+                        resultSet.getString("SlotNumber"),
+                        resultSet.getBoolean("Availability"),
+                        resultSet.getString("ParkingID"));
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error finding parking slot by number", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return null;
+    }
+
+
+
+    // Maintain backward compatibility for getParkingSlotById
+    @Deprecated
+    public ParkingSlot getParkingSlotById(String slotNumber) {
+        // Use the new method with the slotNumber directly
+        return findParkingSlotByNumber(slotNumber);
+    }
+
+    // Get parking slots by parking space ID
+    public List<ParkingSlot> getParkingSlotsByParkingId(String parkingID) {
+        List<ParkingSlot> parkingSlots = new ArrayList<>();
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT * FROM PARKING_SLOT WHERE ParkingID = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingID);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                ParkingSlot slot = new ParkingSlot(
+                        resultSet.getString("SlotNumber"),
+                        resultSet.getBoolean("Availability"),
+                        resultSet.getString("ParkingID"));
+                parkingSlots.add(slot);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting parking slots by parking ID", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return parkingSlots;
+    }
+
+    // Delete parking slot by SlotNumber
+    public boolean deleteParkingSlot(String slotNumber) {
+        connection = DatabaseConnection.getConnection();
+        sql = "DELETE FROM PARKING_SLOT WHERE SlotNumber = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, slotNumber);
+            int rowsAffected = preparedStatement.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error deleting parking slot", e);
+            return false;
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+    }
+
+    /**
+     * Deletes all parking slots for a specific parking space
+     *
+     * @param parkingId The ID of the parking space
+     * @return true if at least one slot was deleted, false otherwise
+     */
+    public boolean deleteParkingSlotsByParkingId(String parkingId) {
+        connection = DatabaseConnection.getConnection();
+        sql = "DELETE FROM PARKING_SLOT WHERE ParkingID = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingId);
+            int rowsAffected = preparedStatement.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error deleting parking slots by parking ID", e);
+            return false;
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+    }
+
+    /**
+     * Count occupied parking slots for a specific parking space
+     *
+     * @param parkingId The ID of the parking space
+     * @return Number of occupied slots
+     */
+    public int getOccupiedSlotCountByParkingId(String parkingId) {
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT COUNT(*) FROM PARKING_SLOT WHERE ParkingID = ? AND Availability = false";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt(1);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error counting occupied slots by parking ID", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return 0;
+    }
+
+    /**
+     * Count occupied parking slots for all parking spaces managed by an admin
+     *
+     * @param adminId The ID of the admin
+     * @return Number of occupied slots
+     */
+    public int getOccupiedSlotCountByAdminId(int adminId) {
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT COUNT(*) FROM PARKING_SLOT ps " +
+                "JOIN PARKING_SPACE p ON ps.ParkingID = p.ParkingID " +
+                "WHERE p.AdminID = ? AND ps.Availability = false";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setInt(1, adminId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt(1);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error counting occupied slots by admin ID", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return 0;
+    }
+
+    /**
+     * Get the parking ID for a specific slot
+     * @param slotNumber The slot number
+     * @return Parking ID or null if not found
+     */
+    public String getParkingIdBySlotNumber(String slotNumber) {
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT ParkingID FROM PARKING_SLOT WHERE SlotNumber = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, slotNumber);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getString("ParkingID");
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting parking ID by slot number", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return null;
+    }
+
+    /**
+     * Get the parking space for a specific slot by slot number
+     *
+     * @param slotNumber The number of the slot
+     * @return ParkingSpace object or null if not found
+     */
+    public ParkingSpace getParkingSpaceBySlotNumber(String slotNumber) {
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT ps.* FROM PARKING_SPACE ps " +
+                "JOIN PARKING_SLOT sl ON ps.ParkingID = sl.ParkingID " +
+                "WHERE sl.SlotNumber = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, slotNumber);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return new ParkingSpace(
+                        resultSet.getString("ParkingID"),
+                        resultSet.getString("ParkingAddress"),
+                        resultSet.getFloat("CostOfParking"),
+                        resultSet.getInt("NumberOfSlots"),
+                        resultSet.getInt("MaxDuration"),
+                        resultSet.getString("Description"),
+                        resultSet.getInt("AdminID")
+                );
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting parking space by slot number", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return null;
+    }
+
+    /**
+     * Get active reservations for a specific slot
+     *
+     * @param slotNumber The slot number
+     * @return List of active reservations as maps
+     */
+    public List<Map<String, Object>> getActiveReservationsForSlot(String slotNumber) {
+        List<Map<String, Object>> reservations = new ArrayList<>();
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT r.* FROM PARKING_RESERVATION r " +
+                "WHERE r.SlotNumber = ? AND r.Status IN ('Processing', 'In Use') " +
+                "AND ((r.EndDate > CURRENT_DATE) OR (r.EndDate = CURRENT_DATE AND r.EndTime > CURRENT_TIME))";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, slotNumber);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                Map<String, Object> reservation = new HashMap<>();
+
+                // Convert SQL dates and times to LocalDateTime
+                LocalDateTime startDateTime = LocalDateTime.of(
+                        resultSet.getDate("StartDate").toLocalDate(),
+                        resultSet.getTime("StartTime").toLocalTime()
+                );
+
+                LocalDateTime endDateTime = LocalDateTime.of(
+                        resultSet.getDate("EndDate").toLocalDate(),
+                        resultSet.getTime("EndTime").toLocalTime()
+                );
+
+                reservation.put("reservationId", resultSet.getInt("ReservationID"));
+                reservation.put("startDateTime", startDateTime);
+                reservation.put("endDateTime", endDateTime);
+                reservation.put("status", resultSet.getString("Status"));
+                reservation.put("vehicleId", resultSet.getString("VehicleID"));
+
+                reservations.add(reservation);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting active reservations for slot", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return reservations;
+    }
+
+    /**
+     * Update availability of a parking slot
+     *
+     * @param slotNumber The slot number
+     * @param available Whether the slot is available or not
+     * @return true if update successful, false otherwise
+     */
+    public boolean updateSlotAvailability(String slotNumber, boolean available) {
+        connection = DatabaseConnection.getConnection();
+        sql = "UPDATE PARKING_SLOT SET Availability = ? WHERE SlotNumber = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setBoolean(1, available);
+            preparedStatement.setString(2, slotNumber);
+            int rowsUpdated = preparedStatement.executeUpdate();
+            return rowsUpdated > 0;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error updating slot availability", e);
+            return false;
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+    }
+    /**
+     * Get total count of parking slots
+     *
+     * @return Total number of parking slots
+     */
+    public int getTotalSlotCount() {
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT COUNT(*) FROM PARKING_SLOT";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt(1);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting total slot count", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return 0;
+    }
+
+    /**
+     * Get count of available slots for a parking space
+     *
+     * @param parkingId The ID of the parking space
+     * @return Number of available slots
+     */
+    public int getAvailableSlotCountByParkingId(String parkingId) {
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT COUNT(*) FROM PARKING_SLOT WHERE ParkingID = ? AND Availability = true";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt(1);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error counting available slots", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return 0;
+    }
+
+    /**
+     * Get only available slots for a parking space
+     *
+     * @param parkingId The ID of the parking space
+     * @return List of available parking slots
+     */
+    public List<ParkingSlot> getAvailableSlotsByParkingId(String parkingId) {
+        List<ParkingSlot> parkingSlots = new ArrayList<>();
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT * FROM PARKING_SLOT WHERE ParkingID = ? AND Availability = true";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                ParkingSlot slot = new ParkingSlot(
+                        resultSet.getString("SlotNumber"),
+                        resultSet.getBoolean("Availability"),
+                        resultSet.getString("ParkingID"));
+                parkingSlots.add(slot);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting available slots", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
         return parkingSlots;
     }
 
     /**
-     * Helper method to extract a ParkingSlot object from a ResultSet.
+     * Get parking slots by parking space ID (alias for getParkingSlotsByParkingId)
      *
-     * @param resultSet The ResultSet containing parking slot data
-     * @return A ParkingSlot object
-     * @throws SQLException if there's an error accessing the ResultSet
+     * @param parkingSpaceId The ID of the parking space
+     * @return List of parking slots for the specified parking space
      */
-    private ParkingSlot extractParkingSlotFromResultSet(ResultSet resultSet) throws SQLException {
-        ParkingSlot parkingSlot = new ParkingSlot();
-        parkingSlot.setSlotID(resultSet.getInt("SlotID"));
-        parkingSlot.setSlotNumber(resultSet.getString("SlotNumber"));
-        parkingSlot.setAvailability(resultSet.getBoolean("Availability"));
-        parkingSlot.setParkingID(resultSet.getString("ParkingID"));
-        return parkingSlot;
+    public List<ParkingSlot> getParkingSlotsByParkingSpaceId(String parkingSpaceId) {
+        return getParkingSlotsByParkingId(parkingSpaceId);
     }
 }

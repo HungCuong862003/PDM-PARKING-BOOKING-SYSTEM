@@ -1,6 +1,5 @@
 package main.java.com.parkeasy.model;
 
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 public class Payment {
@@ -8,35 +7,26 @@ public class Payment {
     private int paymentID;
     // other attributes
     private String paymentMethod;
-    private BigDecimal amount; // Changed from float to BigDecimal
+    private double amount; // Changed from float to double to match service implementation
     private Timestamp paymentDate;
-    // foreign key
+    // foreign keys
     private int reservationID;
     private String cardNumber;
+    // additional attributes used in the service
+    private String status;
+    private String transactionID;
 
     /**
-     * Default constructor
+     * Default no-argument constructor
      */
     public Payment() {
+        // Default constructor with no arguments
     }
 
     /**
-     * Constructor with all fields
+     * Constructor with all fields except status and transactionID
      */
     public Payment(int paymentID, String paymentMethod, float amount, Timestamp paymentDate, int reservationID,
-                   String cardNumber) {
-        this.paymentID = paymentID;
-        this.paymentMethod = paymentMethod;
-        this.amount = new BigDecimal(Float.toString(amount)); // Convert float to BigDecimal
-        this.paymentDate = paymentDate;
-        this.reservationID = reservationID;
-        this.cardNumber = cardNumber;
-    }
-
-    /**
-     * Alternative constructor with BigDecimal amount
-     */
-    public Payment(int paymentID, String paymentMethod, BigDecimal amount, Timestamp paymentDate, int reservationID,
                    String cardNumber) {
         this.paymentID = paymentID;
         this.paymentMethod = paymentMethod;
@@ -44,6 +34,21 @@ public class Payment {
         this.paymentDate = paymentDate;
         this.reservationID = reservationID;
         this.cardNumber = cardNumber;
+    }
+
+    /**
+     * Constructor with all fields including status and transactionID
+     */
+    public Payment(int paymentID, String paymentMethod, double amount, Timestamp paymentDate, int reservationID,
+                   String cardNumber, String status, String transactionID) {
+        this.paymentID = paymentID;
+        this.paymentMethod = paymentMethod;
+        this.amount = amount;
+        this.paymentDate = paymentDate;
+        this.reservationID = reservationID;
+        this.cardNumber = cardNumber;
+        this.status = status;
+        this.transactionID = transactionID;
     }
 
     public int getPaymentID() {
@@ -62,19 +67,12 @@ public class Payment {
         this.paymentMethod = paymentMethod;
     }
 
-    public BigDecimal getAmount() {
+    public double getAmount() {
         return amount;
     }
 
-    public void setAmount(BigDecimal amount) {
+    public void setAmount(double amount) {
         this.amount = amount;
-    }
-
-    /**
-     * Alternative setter for float amounts
-     */
-    public void setAmount(float amount) {
-        this.amount = new BigDecimal(Float.toString(amount));
     }
 
     public Timestamp getPaymentDate() {
@@ -99,5 +97,35 @@ public class Payment {
 
     public void setCardNumber(String cardNumber) {
         this.cardNumber = cardNumber;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getTransactionID() {
+        return transactionID;
+    }
+
+    public void setTransactionID(String transactionID) {
+        this.transactionID = transactionID;
+    }
+
+    @Override
+    public String toString() {
+        return "Payment{" +
+                "paymentID=" + paymentID +
+                ", paymentMethod='" + paymentMethod + '\'' +
+                ", amount=" + amount +
+                ", paymentDate=" + paymentDate +
+                ", reservationID=" + reservationID +
+                ", cardNumber='" + cardNumber + '\'' +
+                ", status='" + status + '\'' +
+                ", transactionID='" + transactionID + '\'' +
+                '}';
     }
 }

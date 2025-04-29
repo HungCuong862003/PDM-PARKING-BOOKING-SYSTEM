@@ -3,269 +3,386 @@ package main.java.com.parkeasy.repository;
 import main.java.com.parkeasy.model.Vehicle;
 import main.java.com.parkeasy.util.DatabaseConnection;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Repository class for managing Vehicle entities in the database.
- * Provides CRUD operations for vehicles.
+ * Repository class for handling vehicle-related database operations
  */
 public class VehicleRepository {
+    private static final Logger LOGGER = Logger.getLogger(VehicleRepository.class.getName());
+    private static final String TABLE_NAME = "VEHICLE"; // Using the table name from schema
 
     /**
-     * Inserts a new vehicle into the database.
+     * Inserts a new vehicle into the database
      *
      * @param vehicle The vehicle to insert
      * @return true if insertion was successful, false otherwise
+     * @throws SQLException if a database error occurs
      */
-    public boolean insertVehicle(Vehicle vehicle) {
-        String sql = "INSERT INTO VEHICLE (VehicleID, UserID) VALUES (?, ?)";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
+    public boolean insertVehicle(Vehicle vehicle) throws SQLException {
+        String sql = "INSERT INTO " + TABLE_NAME + " (VehicleID, UserID) VALUES (?, ?)";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
             preparedStatement.setString(1, vehicle.getVehicleID());
             preparedStatement.setInt(2, vehicle.getUserID());
-
             int rowsAffected = preparedStatement.executeUpdate();
             return rowsAffected > 0;
-
         } catch (SQLException e) {
-            System.err.println("Error inserting vehicle: " + e.getMessage());
-            e.printStackTrace();
-            return false;
+            LOGGER.log(Level.SEVERE, "Error inserting vehicle", e);
+            throw e;
+        } finally {
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
     }
 
     /**
-     * Retrieves a vehicle by its ID.
+     * Gets a vehicle by its ID
      *
-     * @param vehicleID The ID of the vehicle to retrieve
-     * @return The found Vehicle or null if not found
+     * @param vehicleID The ID of the vehicle to get
+     * @return The vehicle if found, null otherwise
+     * @throws SQLException if a database error occurs
      */
-    public Vehicle getVehicleById(String vehicleID) {
-        String sql = "SELECT * FROM VEHICLE WHERE VehicleID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
+    public Vehicle getVehicleById(String vehicleID) throws SQLException {
+        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE VehicleID = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
             preparedStatement.setString(1, vehicleID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return new Vehicle(
-                            resultSet.getString("VehicleID"),
-                            resultSet.getInt("UserID")
-                    );
-                }
+            resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return new Vehicle(resultSet.getString("VehicleID"), resultSet.getInt("UserID"));
             }
-
+            return null;
         } catch (SQLException e) {
-            System.err.println("Error retrieving vehicle by ID: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting vehicle by ID", e);
+            throw e;
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
-
-        return null;
     }
 
     /**
-     * Retrieves all vehicles from the database.
+     * Gets all vehicles
      *
-     * @return A list of all vehicles
+     * @return List of all vehicles
+     * @throws SQLException if a database error occurs
      */
-    public List<Vehicle> getAllVehicles() {
+    public List<Vehicle> getAllVehicles() throws SQLException {
         List<Vehicle> vehicles = new ArrayList<>();
-        String sql = "SELECT * FROM VEHICLE";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
-
+        String sql = "SELECT * FROM " + TABLE_NAME;
+        Connection connection = null;
+        Statement statement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            statement = connection.createStatement();
+            resultSet = statement.executeQuery(sql);
             while (resultSet.next()) {
-                vehicles.add(new Vehicle(
-                        resultSet.getString("VehicleID"),
-                        resultSet.getInt("UserID")
-                ));
+                vehicles.add(new Vehicle(resultSet.getString("VehicleID"), resultSet.getInt("UserID")));
             }
-
+            return vehicles;
         } catch (SQLException e) {
-            System.err.println("Error retrieving all vehicles: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting all vehicles", e);
+            throw e;
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(statement);
+            DatabaseConnection.closeConnection(connection);
         }
-
-        return vehicles;
     }
 
     /**
-     * Deletes a vehicle by its ID.
+     * Deletes a vehicle by its ID
      *
      * @param vehicleID The ID of the vehicle to delete
      * @return true if deletion was successful, false otherwise
+     * @throws SQLException if a database error occurs
      */
-    public boolean deleteVehicle(String vehicleID) {
-        String sql = "DELETE FROM VEHICLE WHERE VehicleID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
+    public boolean deleteVehicleById(String vehicleID) throws SQLException {
+        String sql = "DELETE FROM " + TABLE_NAME + " WHERE VehicleID = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
             preparedStatement.setString(1, vehicleID);
-
             int rowsAffected = preparedStatement.executeUpdate();
             return rowsAffected > 0;
-
         } catch (SQLException e) {
-            System.err.println("Error deleting vehicle: " + e.getMessage());
-            e.printStackTrace();
-            return false;
+            LOGGER.log(Level.SEVERE, "Error deleting vehicle by ID", e);
+            throw e;
+        } finally {
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
     }
 
     /**
-     * Retrieves all vehicles belonging to a specific user.
+     * Gets all vehicles for a specific user
      *
-     * @param userID The ID of the user
-     * @return A list of vehicles belonging to the specified user
+     * @param userId The ID of the user
+     * @return List of vehicles belonging to the user
+     * @throws SQLException if a database error occurs
      */
-    public List<Vehicle> getVehiclesByUserId(int userID) {
+    public List<Vehicle> getVehiclesByUserId(int userId) throws SQLException {
         List<Vehicle> vehicles = new ArrayList<>();
-        String sql = "SELECT * FROM VEHICLE WHERE UserID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setInt(1, userID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    vehicles.add(new Vehicle(
-                            resultSet.getString("VehicleID"),
-                            resultSet.getInt("UserID")
-                    ));
-                }
+        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE UserID = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setInt(1, userId);
+            resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                vehicles.add(new Vehicle(resultSet.getString("VehicleID"), resultSet.getInt("UserID")));
             }
-
+            return vehicles;
         } catch (SQLException e) {
-            System.err.println("Error retrieving vehicles by user ID: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting vehicles by user ID", e);
+            throw e;
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
-
-        return vehicles;
     }
 
     /**
-     * Updates vehicle information.
+     * Updates a vehicle in the database
      *
-     * @param vehicleID The ID of the vehicle to update
-     * @param vehicle The updated vehicle information
+     * @param vehicle The vehicle with updated information
      * @return true if update was successful, false otherwise
+     * @throws SQLException if a database error occurs
      */
-    public boolean updateVehicle(String vehicleID, Vehicle vehicle) {
-        String sql = "UPDATE VEHICLE SET UserID = ? WHERE VehicleID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
+    public boolean updateVehicle(Vehicle vehicle) throws SQLException {
+        String sql = "UPDATE " + TABLE_NAME + " SET UserID = ? WHERE VehicleID = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
             preparedStatement.setInt(1, vehicle.getUserID());
-            preparedStatement.setString(2, vehicleID);
-
+            preparedStatement.setString(2, vehicle.getVehicleID());
             int rowsAffected = preparedStatement.executeUpdate();
             return rowsAffected > 0;
-
         } catch (SQLException e) {
-            System.err.println("Error updating vehicle: " + e.getMessage());
-            e.printStackTrace();
-            return false;
+            LOGGER.log(Level.SEVERE, "Error updating vehicle", e);
+            throw e;
+        } finally {
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
     }
 
     /**
-     * Gets the number of vehicles owned by a user.
+     * Checks if a vehicle exists
      *
-     * @param userID The ID of the user
-     * @return The count of vehicles owned by the user
-     */
-    public int getVehicleCountByUserId(int userID) {
-        String sql = "SELECT COUNT(*) FROM VEHICLE WHERE UserID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setInt(1, userID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt(1);
-                }
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error counting vehicles by user ID: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return 0;
-    }
-
-    /**
-     * Checks if a vehicle exists in the database.
-     *
-     * @param vehicleID The ID of the vehicle to check
+     * @param vehicleID The vehicle ID to check
      * @return true if the vehicle exists, false otherwise
+     * @throws SQLException if a database error occurs
      */
-    public boolean vehicleExists(String vehicleID) {
-        String sql = "SELECT COUNT(*) FROM VEHICLE WHERE VehicleID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
+    public boolean isVehicleExists(String vehicleID) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM " + TABLE_NAME + " WHERE VehicleID = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
             preparedStatement.setString(1, vehicleID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt(1) > 0;
-                }
+            resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt(1) > 0;
             }
-
+            return false;
         } catch (SQLException e) {
-            System.err.println("Error checking if vehicle exists: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error checking if vehicle exists", e);
+            throw e;
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
-
-        return false;
     }
 
     /**
-     * Checks if a vehicle belongs to a specific user.
+     * Gets all vehicle IDs for a specific user
      *
-     * @param vehicleID The ID of the vehicle
-     * @param userID The ID of the user
-     * @return true if the vehicle belongs to the user, false otherwise
+     * @param userId The ID of the user
+     * @return List of vehicle IDs belonging to the user
+     * @throws SQLException if a database error occurs
      */
-    public boolean isVehicleOwnedByUser(String vehicleID, int userID) {
-        String sql = "SELECT COUNT(*) FROM VEHICLE WHERE VehicleID = ? AND UserID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setString(1, vehicleID);
-            preparedStatement.setInt(2, userID);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt(1) > 0;
-                }
+    public List<String> getVehicleIdsByUserId(int userId) throws SQLException {
+        List<String> vehicleIds = new ArrayList<>();
+        String sql = "SELECT VehicleID FROM " + TABLE_NAME + " WHERE UserID = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setInt(1, userId);
+            resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                vehicleIds.add(resultSet.getString("VehicleID"));
             }
-
+            return vehicleIds;
         } catch (SQLException e) {
-            System.err.println("Error checking if vehicle is owned by user: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting vehicle IDs by user ID", e);
+            throw e;
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
+    }
 
-        return false;
+    /**
+     * Counts the number of vehicles owned by a user
+     *
+     * @param userId The ID of the user
+     * @return The count of vehicles
+     * @throws SQLException if a database error occurs
+     */
+    public int countUserVehicles(int userId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM " + TABLE_NAME + " WHERE UserID = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setInt(1, userId);
+            resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt(1);
+            }
+            return 0;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error counting user vehicles", e);
+            return 0;
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
+        }
+    }
+
+    /**
+     * Checks if a vehicle belongs to a specific user
+     *
+     * @param vehicleId The ID of the vehicle
+     * @param userId The ID of the user
+     * @return true if the vehicle belongs to the user, false otherwise
+     * @throws SQLException if a database error occurs
+     */
+    public boolean isVehicleOwnedByUser(String vehicleId, int userId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM " + TABLE_NAME + " WHERE VehicleID = ? AND UserID = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setString(1, vehicleId);
+            preparedStatement.setInt(2, userId);
+            resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt(1) > 0;
+            }
+            return false;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error checking if vehicle is owned by user", e);
+            return false;
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
+        }
+    }
+
+    /**
+     * Gets the most frequently used vehicle for a user
+     *
+     * @param userId The ID of the user
+     * @return The vehicle ID or null if none found
+     * @throws SQLException if a database error occurs
+     */
+    public String getMostUsedVehicleForUser(int userId) throws SQLException {
+        String sql = "SELECT v.VehicleID, COUNT(r.ReservationID) as ReservationCount " +
+                "FROM " + TABLE_NAME + " v " +
+                "JOIN parkingreservation r ON v.VehicleID = r.VehicleID " +
+                "WHERE v.UserID = ? " +
+                "GROUP BY v.VehicleID " +
+                "ORDER BY ReservationCount DESC " +
+                "LIMIT 1";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setInt(1, userId);
+            resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getString("VehicleID");
+            }
+            return null;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting most used vehicle for user", e);
+            return null;
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
+        }
+    }
+
+    /**
+     * Gets all vehicles that have active reservations
+     *
+     * @return List of vehicles with active reservations
+     * @throws SQLException if a database error occurs
+     */
+    public List<Vehicle> getVehiclesWithActiveReservations() throws SQLException {
+        List<Vehicle> vehicles = new ArrayList<>();
+        String sql = "SELECT DISTINCT v.* FROM " + TABLE_NAME + " v " +
+                "JOIN parkingreservation r ON v.VehicleID = r.VehicleID " +
+                "WHERE r.Status IN ('ACTIVE', 'PENDING', 'PAID') " +
+                "AND ((r.EndDate > CURRENT_DATE) OR (r.EndDate = CURRENT_DATE AND r.EndTime > CURRENT_TIME))";
+        Connection connection = null;
+        Statement statement = null;
+        ResultSet resultSet = null;
+        try {
+            connection = DatabaseConnection.getConnection();
+            statement = connection.createStatement();
+            resultSet = statement.executeQuery(sql);
+            while (resultSet.next()) {
+                vehicles.add(new Vehicle(resultSet.getString("VehicleID"), resultSet.getInt("UserID")));
+            }
+            return vehicles;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting vehicles with active reservations", e);
+            throw e;
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(statement);
+            DatabaseConnection.closeConnection(connection);
+        }
     }
 }

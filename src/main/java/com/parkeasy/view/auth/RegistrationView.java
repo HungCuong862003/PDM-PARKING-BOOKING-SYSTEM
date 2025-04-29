@@ -1,555 +1,256 @@
 package main.java.com.parkeasy.view.auth;
 
+import main.java.com.parkeasy.controller.auth.RegistrationController;
+import main.java.com.parkeasy.service.AdminService;
+import main.java.com.parkeasy.service.UserService;
+import main.java.com.parkeasy.util.DatabaseConnection;
+
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 /**
- * The RegistrationView class represents the registration screen for the ParkEasy application.
- * It provides a simple interface for users to create a new account.
- * Implemented with Java Swing for IntelliJ.
+ * Registration view for the ParkEasy application
+ * Allows users and admins to register new accounts
  */
-public class RegistrationView extends JPanel {
-
+public class RegistrationView extends JFrame {
     private JTextField nameField;
     private JTextField emailField;
     private JTextField phoneField;
     private JPasswordField passwordField;
     private JPasswordField confirmPasswordField;
+    private JRadioButton userRadioButton;
+    private JRadioButton adminRadioButton;
     private JButton registerButton;
-    private JButton renterButton;
-    private JButton ownerAdminButton;
-    private JButton loginButton;
+    private JButton backToLoginButton;
 
-    /**
-     * Constructor for the RegistrationView class.
-     * Sets up the layout and components of the registration screen.
-     */
+    private RegistrationController registrationController;
+
     public RegistrationView() {
-        setLayout(new BorderLayout());
+        // Initialize services and controller
+        UserService userService = new UserService();
+        AdminService adminService = new AdminService();
+        registrationController = new RegistrationController(userService, adminService);
 
-        // Create left and right panels
-        JPanel leftPanel = createLeftPanel();
-        JPanel rightPanel = createRightPanel();
+        // Set up the frame
+        setTitle("ParkEasy - Registration");
+        setSize(450, 350);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
 
-        // Add panels to main layout
-        add(leftPanel, BorderLayout.WEST);
-        add(rightPanel, BorderLayout.CENTER);
+        // Create components
+        initComponents();
+
+        // Layout the components
+        layoutComponents();
+
+        // Make the frame visible
+        setVisible(true);
     }
 
-    /**
-     * Creates the left panel of the registration screen with app logo and information.
-     *
-     * @return the configured left panel
-     */
-    private JPanel createLeftPanel() {
-        JPanel leftPanel = new JPanel();
-        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
-        leftPanel.setBackground(new Color(45, 45, 45));
-        leftPanel.setPreferredSize(new Dimension(500, 700));
-        leftPanel.setBorder(new EmptyBorder(40, 40, 40, 40));
+    private void initComponents() {
+        nameField = new JTextField(20);
+        emailField = new JTextField(20);
+        phoneField = new JTextField(20);
+        passwordField = new JPasswordField(20);
+        confirmPasswordField = new JPasswordField(20);
 
-        // App logo and name
-        JLabel logoLabel = new JLabel("🚗", JLabel.CENTER);
-        logoLabel.setFont(new Font("Arial", Font.BOLD, 48));
-        logoLabel.setForeground(Color.WHITE);
-        logoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        userRadioButton = new JRadioButton("User");
+        userRadioButton.setSelected(true); // Default selection
 
-        JLabel appNameLabel = new JLabel("ParkEasy", JLabel.CENTER);
-        appNameLabel.setFont(new Font("Arial", Font.BOLD, 32));
-        appNameLabel.setForeground(Color.WHITE);
-        appNameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        adminRadioButton = new JRadioButton("Admin");
 
-        // Separator
-        JSeparator separator = new JSeparator();
-        separator.setMaximumSize(new Dimension(500, 2));
-        separator.setForeground(new Color(80, 80, 80));
+        // Group the radio buttons
+        ButtonGroup group = new ButtonGroup();
+        group.add(userRadioButton);
+        group.add(adminRadioButton);
 
-        // Welcome message
-        JLabel welcomeLabel = new JLabel("Join ParkEasy Today!", JLabel.CENTER);
-        welcomeLabel.setFont(new Font("Arial", Font.BOLD, 28));
-        welcomeLabel.setForeground(Color.WHITE);
-        welcomeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        registerButton = new JButton("Register");
+        backToLoginButton = new JButton("Back to Login");
 
-        // Description
-        JTextArea descriptionArea = new JTextArea(
-                "Create an account to access all features of our parking management system."
-        );
-        descriptionArea.setWrapStyleWord(true);
-        descriptionArea.setLineWrap(true);
-        descriptionArea.setOpaque(false);
-        descriptionArea.setForeground(Color.WHITE);
-        descriptionArea.setFont(new Font("Arial", Font.PLAIN, 16));
-        descriptionArea.setEditable(false);
-        descriptionArea.setMaximumSize(new Dimension(400, 100));
-        descriptionArea.setAlignmentX(Component.CENTER_ALIGNMENT);
+        // Add action listeners
+        registerButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                register();
+            }
+        });
 
-        // Feature panels
-        JPanel featurePanel = createFeaturePanel();
-
-        // Add spacing between components
-        leftPanel.add(Box.createVerticalGlue());
-        leftPanel.add(logoLabel);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-        leftPanel.add(appNameLabel);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        leftPanel.add(separator);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        leftPanel.add(welcomeLabel);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-        leftPanel.add(descriptionArea);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 40)));
-        leftPanel.add(featurePanel);
-        leftPanel.add(Box.createVerticalGlue());
-
-        return leftPanel;
+        backToLoginButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                openLoginView();
+            }
+        });
     }
 
-    /**
-     * Creates a panel containing feature information.
-     *
-     * @return the configured feature panel
-     */
-    private JPanel createFeaturePanel() {
-        JPanel featurePanel = new JPanel();
-        featurePanel.setLayout(new BoxLayout(featurePanel, BoxLayout.Y_AXIS));
-        featurePanel.setOpaque(false);
+    private void layoutComponents() {
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BorderLayout(10, 10));
 
-        // Feature 1
-        JPanel feature1 = new JPanel(new BorderLayout());
-        feature1.setOpaque(false);
-        feature1.setMaximumSize(new Dimension(420, 100));
-
-        JLabel icon1 = new JLabel("🅿️");
-        icon1.setFont(new Font("Arial", Font.PLAIN, 24));
-        icon1.setForeground(Color.WHITE);
-        icon1.setBorder(new EmptyBorder(0, 0, 0, 15));
-
-        JPanel textPanel1 = new JPanel();
-        textPanel1.setLayout(new BoxLayout(textPanel1, BoxLayout.Y_AXIS));
-        textPanel1.setOpaque(false);
-
-        JLabel title1 = new JLabel("Easy Parking Management");
-        title1.setFont(new Font("Arial", Font.BOLD, 18));
-        title1.setForeground(Color.WHITE);
-
-        JLabel desc1 = new JLabel("Manage all your parking spaces or find available spots quickly");
-        desc1.setFont(new Font("Arial", Font.PLAIN, 14));
-        desc1.setForeground(Color.LIGHT_GRAY);
-
-        textPanel1.add(title1);
-        textPanel1.add(Box.createRigidArea(new Dimension(0, 5)));
-        textPanel1.add(desc1);
-
-        feature1.add(icon1, BorderLayout.WEST);
-        feature1.add(textPanel1, BorderLayout.CENTER);
-
-        // Feature 2
-        JPanel feature2 = new JPanel(new BorderLayout());
-        feature2.setOpaque(false);
-        feature2.setMaximumSize(new Dimension(420, 100));
-
-        JLabel icon2 = new JLabel("🔄");
-        icon2.setFont(new Font("Arial", Font.PLAIN, 24));
-        icon2.setForeground(Color.WHITE);
-        icon2.setBorder(new EmptyBorder(0, 0, 0, 15));
-
-        JPanel textPanel2 = new JPanel();
-        textPanel2.setLayout(new BoxLayout(textPanel2, BoxLayout.Y_AXIS));
-        textPanel2.setOpaque(false);
-
-        JLabel title2 = new JLabel("Real-time Availability");
-        title2.setFont(new Font("Arial", Font.BOLD, 18));
-        title2.setForeground(Color.WHITE);
-
-        JLabel desc2 = new JLabel("Get instant updates on available parking spots");
-        desc2.setFont(new Font("Arial", Font.PLAIN, 14));
-        desc2.setForeground(Color.LIGHT_GRAY);
-
-        textPanel2.add(title2);
-        textPanel2.add(Box.createRigidArea(new Dimension(0, 5)));
-        textPanel2.add(desc2);
-
-        feature2.add(icon2, BorderLayout.WEST);
-        feature2.add(textPanel2, BorderLayout.CENTER);
-
-        // Feature 3
-        JPanel feature3 = new JPanel(new BorderLayout());
-        feature3.setOpaque(false);
-        feature3.setMaximumSize(new Dimension(420, 100));
-
-        JLabel icon3 = new JLabel("💳");
-        icon3.setFont(new Font("Arial", Font.PLAIN, 24));
-        icon3.setForeground(Color.WHITE);
-        icon3.setBorder(new EmptyBorder(0, 0, 0, 15));
-
-        JPanel textPanel3 = new JPanel();
-        textPanel3.setLayout(new BoxLayout(textPanel3, BoxLayout.Y_AXIS));
-        textPanel3.setOpaque(false);
-
-        JLabel title3 = new JLabel("Secure Payments");
-        title3.setFont(new Font("Arial", Font.BOLD, 18));
-        title3.setForeground(Color.WHITE);
-
-        JLabel desc3 = new JLabel("Pay for parking easily with multiple payment options");
-        desc3.setFont(new Font("Arial", Font.PLAIN, 14));
-        desc3.setForeground(Color.LIGHT_GRAY);
-
-        textPanel3.add(title3);
-        textPanel3.add(Box.createRigidArea(new Dimension(0, 5)));
-        textPanel3.add(desc3);
-
-        feature3.add(icon3, BorderLayout.WEST);
-        feature3.add(textPanel3, BorderLayout.CENTER);
-
-        // Add features to panel with spacing
-        featurePanel.add(feature1);
-        featurePanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        featurePanel.add(feature2);
-        featurePanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        featurePanel.add(feature3);
-
-        return featurePanel;
-    }
-
-    /**
-     * Creates the right panel of the registration screen with registration form.
-     *
-     * @return the configured right panel
-     */
-    private JPanel createRightPanel() {
-        JPanel rightPanel = new JPanel();
-        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
-        rightPanel.setBackground(new Color(92, 92, 92));
-        rightPanel.setBorder(new EmptyBorder(40, 40, 40, 40));
-
-        // Tab buttons for Login and Sign Up
-        JPanel tabPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
-        tabPanel.setOpaque(false);
-
-        loginButton = new JButton("Login");
-        loginButton.setFont(new Font("Arial", Font.BOLD, 18));
-        loginButton.setForeground(Color.WHITE);
-        loginButton.setContentAreaFilled(false);
-        loginButton.setBorderPainted(false);
-        loginButton.setFocusPainted(false);
-        loginButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        JLabel signUpLabel = new JLabel("Sign Up");
-        signUpLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        signUpLabel.setForeground(new Color(98, 161, 232)); // Blue color
-
-        tabPanel.add(loginButton);
-        tabPanel.add(signUpLabel);
-
-        // Tab indicator (blue line under "Sign Up")
-        JPanel indicatorPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        indicatorPanel.setOpaque(false);
-
-        JPanel blueIndicator = new JPanel();
-        blueIndicator.setBackground(new Color(98, 161, 232));
-        blueIndicator.setPreferredSize(new Dimension(80, 3));
-
-        indicatorPanel.add(blueIndicator);
-
-        // User type selection
-        JPanel userTypePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        userTypePanel.setOpaque(false);
-
-        renterButton = new JButton();
-        renterButton.setLayout(new BorderLayout());
-        renterButton.setBackground(new Color(98, 161, 232));
-        renterButton.setForeground(Color.WHITE);
-        renterButton.setPreferredSize(new Dimension(200, 100));
-        renterButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        JPanel renterContent = new JPanel();
-        renterContent.setLayout(new BoxLayout(renterContent, BoxLayout.Y_AXIS));
-        renterContent.setOpaque(false);
-
-        JLabel carIcon = new JLabel("🚗", JLabel.CENTER);
-        carIcon.setFont(new Font("Arial", Font.PLAIN, 24));
-        carIcon.setForeground(Color.WHITE);
-        carIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel renterLabel = new JLabel("Renter", JLabel.CENTER);
-        renterLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        renterLabel.setForeground(Color.WHITE);
-        renterLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        renterContent.add(Box.createVerticalGlue());
-        renterContent.add(carIcon);
-        renterContent.add(Box.createRigidArea(new Dimension(0, 10)));
-        renterContent.add(renterLabel);
-        renterContent.add(Box.createVerticalGlue());
-
-        renterButton.add(renterContent, BorderLayout.CENTER);
-
-        ownerAdminButton = new JButton();
-        ownerAdminButton.setLayout(new BorderLayout());
-        ownerAdminButton.setBackground(new Color(92, 92, 92));
-        ownerAdminButton.setForeground(Color.WHITE);
-        ownerAdminButton.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
-        ownerAdminButton.setPreferredSize(new Dimension(200, 100));
-        ownerAdminButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        JPanel ownerContent = new JPanel();
-        ownerContent.setLayout(new BoxLayout(ownerContent, BoxLayout.Y_AXIS));
-        ownerContent.setOpaque(false);
-
-        JLabel adminIcon = new JLabel("≡", JLabel.CENTER);
-        adminIcon.setFont(new Font("Arial", Font.PLAIN, 24));
-        adminIcon.setForeground(Color.WHITE);
-        adminIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel ownerLabel = new JLabel("Owner/Admin", JLabel.CENTER);
-        ownerLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        ownerLabel.setForeground(Color.WHITE);
-        ownerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        ownerContent.add(Box.createVerticalGlue());
-        ownerContent.add(adminIcon);
-        ownerContent.add(Box.createRigidArea(new Dimension(0, 10)));
-        ownerContent.add(ownerLabel);
-        ownerContent.add(Box.createVerticalGlue());
-
-        ownerAdminButton.add(ownerContent, BorderLayout.CENTER);
-
-        userTypePanel.add(renterButton);
-        userTypePanel.add(ownerAdminButton);
+        // Create the form panel
+        JPanel formPanel = new JPanel();
+        formPanel.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
 
         // Name field
-        JLabel nameLabel = new JLabel("Full Name");
-        nameLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        nameLabel.setForeground(Color.WHITE);
-        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.EAST;
+        formPanel.add(new JLabel("Name:"), gbc);
 
-        nameField = new JTextField();
-        nameField.setBackground(new Color(92, 92, 92));
-        nameField.setForeground(Color.WHITE);
-        nameField.setCaretColor(Color.WHITE);
-        nameField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.LIGHT_GRAY),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
-        nameField.setPreferredSize(new Dimension(400, 40));
-        nameField.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        formPanel.add(nameField, gbc);
 
         // Email field
-        JLabel emailLabel = new JLabel("Email");
-        emailLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        emailLabel.setForeground(Color.WHITE);
-        emailLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.anchor = GridBagConstraints.EAST;
+        formPanel.add(new JLabel("Email:"), gbc);
 
-        emailField = new JTextField();
-        emailField.setBackground(new Color(92, 92, 92));
-        emailField.setForeground(Color.WHITE);
-        emailField.setCaretColor(Color.WHITE);
-        emailField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.LIGHT_GRAY),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
-        emailField.setPreferredSize(new Dimension(400, 40));
-        emailField.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        formPanel.add(emailField, gbc);
 
         // Phone field
-        JLabel phoneLabel = new JLabel("Phone Number");
-        phoneLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        phoneLabel.setForeground(Color.WHITE);
-        phoneLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.anchor = GridBagConstraints.EAST;
+        formPanel.add(new JLabel("Phone:"), gbc);
 
-        phoneField = new JTextField();
-        phoneField.setBackground(new Color(92, 92, 92));
-        phoneField.setForeground(Color.WHITE);
-        phoneField.setCaretColor(Color.WHITE);
-        phoneField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.LIGHT_GRAY),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
-        phoneField.setPreferredSize(new Dimension(400, 40));
-        phoneField.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        gbc.anchor = GridBagConstraints.WEST;
+        formPanel.add(phoneField, gbc);
 
         // Password field
-        JLabel passwordLabel = new JLabel("Password");
-        passwordLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        passwordLabel.setForeground(Color.WHITE);
-        passwordLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.anchor = GridBagConstraints.EAST;
+        formPanel.add(new JLabel("Password:"), gbc);
 
-        passwordField = new JPasswordField();
-        passwordField.setBackground(new Color(92, 92, 92));
-        passwordField.setForeground(Color.WHITE);
-        passwordField.setCaretColor(Color.WHITE);
-        passwordField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.LIGHT_GRAY),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
-        passwordField.setPreferredSize(new Dimension(400, 40));
-        passwordField.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
+        gbc.gridx = 1;
+        gbc.gridy = 3;
+        gbc.anchor = GridBagConstraints.WEST;
+        formPanel.add(passwordField, gbc);
 
         // Confirm Password field
-        JLabel confirmPasswordLabel = new JLabel("Confirm Password");
-        confirmPasswordLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        confirmPasswordLabel.setForeground(Color.WHITE);
-        confirmPasswordLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.anchor = GridBagConstraints.EAST;
+        formPanel.add(new JLabel("Confirm Password:"), gbc);
 
-        confirmPasswordField = new JPasswordField();
-        confirmPasswordField.setBackground(new Color(92, 92, 92));
-        confirmPasswordField.setForeground(Color.WHITE);
-        confirmPasswordField.setCaretColor(Color.WHITE);
-        confirmPasswordField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.LIGHT_GRAY),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
-        confirmPasswordField.setPreferredSize(new Dimension(400, 40));
-        confirmPasswordField.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
+        gbc.gridx = 1;
+        gbc.gridy = 4;
+        gbc.anchor = GridBagConstraints.WEST;
+        formPanel.add(confirmPasswordField, gbc);
 
-        // Register button
-        registerButton = new JButton("Register");
-        registerButton.setFont(new Font("Arial", Font.BOLD, 16));
-        registerButton.setForeground(Color.WHITE);
-        registerButton.setBackground(new Color(98, 161, 232));
-        registerButton.setPreferredSize(new Dimension(400, 40));
-        registerButton.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
-        registerButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        // Radio buttons
+        JPanel radioPanel = new JPanel();
+        radioPanel.add(userRadioButton);
+        radioPanel.add(adminRadioButton);
 
-        // Add components to panel with spacing
-        rightPanel.add(tabPanel);
-        rightPanel.add(indicatorPanel);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 30)));
-        rightPanel.add(userTypePanel);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        rightPanel.add(nameLabel);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        rightPanel.add(nameField);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-        rightPanel.add(emailLabel);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        rightPanel.add(emailField);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-        rightPanel.add(phoneLabel);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        rightPanel.add(phoneField);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-        rightPanel.add(passwordLabel);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        rightPanel.add(passwordField);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-        rightPanel.add(confirmPasswordLabel);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        rightPanel.add(confirmPasswordField);
-        rightPanel.add(Box.createRigidArea(new Dimension(0, 30)));
-        rightPanel.add(registerButton);
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        gbc.gridwidth = 2;
+        gbc.anchor = GridBagConstraints.CENTER;
+        formPanel.add(radioPanel, gbc);
 
-        return rightPanel;
+        // Add form panel to main panel
+        mainPanel.add(formPanel, BorderLayout.CENTER);
+
+        // Create the button panel
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        buttonPanel.add(registerButton);
+        buttonPanel.add(backToLoginButton);
+
+        // Add button panel to main panel
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        // Add main panel to frame
+        add(mainPanel);
     }
 
-    /**
-     * Shows the registration view in a frame.
-     */
-    public void display() {
-        JFrame frame = new JFrame("ParkEasy - Registration");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setContentPane(this);
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+    private void register() {
+        String name = nameField.getText();
+        String email = emailField.getText();
+        String phone = phoneField.getText();
+        String password = new String(passwordField.getPassword());
+        String confirmPassword = new String(confirmPasswordField.getPassword());
+        boolean isAdmin = adminRadioButton.isSelected();
+
+        // Validate input
+        if (name.isEmpty() || email.isEmpty() || phone.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Please fill in all fields.",
+                    "Registration Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!password.equals(confirmPassword)) {
+            JOptionPane.showMessageDialog(this,
+                    "Passwords do not match.",
+                    "Registration Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            boolean success;
+
+            if (isAdmin) {
+                success = registrationController.registerAdmin(name, email, phone, password);
+                if (success) {
+                    JOptionPane.showMessageDialog(this,
+                            "Admin registration successful!",
+                            "Registration Successful",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    openLoginView();
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                            "Admin registration failed. Email or phone may already be in use.",
+                            "Registration Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                success = registrationController.registerUser(name, email, phone, password);
+                if (success) {
+                    JOptionPane.showMessageDialog(this,
+                            "User registration successful!",
+                            "Registration Successful",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    openLoginView();
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                            "User registration failed. Email or phone may already be in use.",
+                            "Registration Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "An error occurred during registration: " + ex.getMessage(),
+                    "Registration Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-    // Event listeners
-
-    /**
-     * Sets the action listener for the register button.
-     *
-     * @param listener the ActionListener for the register button
-     */
-    public void setRegisterButtonListener(ActionListener listener) {
-        registerButton.addActionListener(listener);
-    }
-
-    /**
-     * Sets the action listener for the login button.
-     *
-     * @param listener the ActionListener for the login button
-     */
-    public void setLoginButtonListener(ActionListener listener) {
-        loginButton.addActionListener(listener);
-    }
-
-    /**
-     * Sets the action listener for the renter button.
-     *
-     * @param listener the ActionListener for the renter button
-     */
-    public void setRenterButtonListener(ActionListener listener) {
-        renterButton.addActionListener(listener);
-    }
-
-    /**
-     * Sets the action listener for the owner/admin button.
-     *
-     * @param listener the ActionListener for the owner/admin button
-     */
-    public void setOwnerAdminButtonListener(ActionListener listener) {
-        ownerAdminButton.addActionListener(listener);
-    }
-
-    // Getters for input fields
-
-    /**
-     * Gets the name input.
-     *
-     * @return the name text
-     */
-    public String getName() {
-        return nameField.getText();
-    }
-
-    /**
-     * Gets the email input.
-     *
-     * @return the email text
-     */
-    public String getEmail() {
-        return emailField.getText();
-    }
-
-    /**
-     * Gets the phone input.
-     *
-     * @return the phone text
-     */
-    public String getPhone() {
-        return phoneField.getText();
-    }
-
-    /**
-     * Gets the password input.
-     *
-     * @return the password text
-     */
-    public String getPassword() {
-        return new String(passwordField.getPassword());
-    }
-
-    /**
-     * Gets the confirm password input.
-     *
-     * @return the confirm password text
-     */
-    public String getConfirmPassword() {
-        return new String(confirmPasswordField.getPassword());
+    private void openLoginView() {
+        new LoginView();
+        dispose(); // Close registration window
     }
 
     // Main method for testing
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            new RegistrationView().display();
+            new RegistrationView();
         });
     }
 }

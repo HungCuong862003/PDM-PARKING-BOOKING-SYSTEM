@@ -1,14 +1,14 @@
 package main.java.com.parkeasy.model;
 
-import java.sql.Date;
+import java.util.Date;
 
+/**
+ * Model class representing a payment card in the system
+ */
 public class Card {
-    // primary key
     private String cardNumber;
-    // other attributes
     private Date validTo;
-    private String cardHolderName;
-    // foreign key
+    private String cardHolder;
     private int userID;
 
     /**
@@ -21,34 +21,19 @@ public class Card {
      * Constructor with all fields
      *
      * @param cardNumber The card number (primary key)
-     * @param validTo The expiration date (can be String or Date)
-     * @param cardHolderName The name of the card holder
-     * @param userID The user ID that owns this card
+     * @param validTo    The expiration date of the card
+     * @param cardHolder The name of the card holder
+     * @param userID     The ID of the user who owns this card
      */
-    public Card(String cardNumber, String validTo, String cardHolderName, int userID) {
-        this.cardNumber = cardNumber;
-        this.validTo = Date.valueOf(validTo);
-        this.cardHolderName = cardHolderName;
-        this.userID = userID;
-    }
-
-    /**
-     * Alternative constructor with Date for validTo
-     *
-     * @param cardNumber The card number (primary key)
-     * @param validTo The expiration date as a Date object
-     * @param cardHolderName The name of the card holder
-     * @param userID The user ID that owns this card
-     */
-    public Card(String cardNumber, Date validTo, String cardHolderName, int userID) {
+    public Card(String cardNumber, Date validTo, String cardHolder, int userID) {
         this.cardNumber = cardNumber;
         this.validTo = validTo;
-        this.cardHolderName = cardHolderName;
+        this.cardHolder = cardHolder;
         this.userID = userID;
     }
 
     /**
-     * Gets the card number
+     * Get the card number
      *
      * @return The card number
      */
@@ -57,77 +42,52 @@ public class Card {
     }
 
     /**
-     * Sets the card number
+     * Set the card number
      *
      * @param cardNumber The card number to set
      */
     public void setCardNumber(String cardNumber) {
-        if (cardNumber == null || cardNumber.trim().isEmpty()) {
-            throw new IllegalArgumentException("Card number cannot be null or empty");
-        }
-        // Basic validation for card number format
-        if (!cardNumber.matches("^\\d{13,19}$")) {
-            throw new IllegalArgumentException("Invalid card number format");
-        }
         this.cardNumber = cardNumber;
     }
 
     /**
-     * Gets the expiration date as a string (yyyy-MM-dd)
-     *
-     * @return The expiration date string
-     */
-    public String getValidTo() {
-        return validTo.toString();
-    }
-
-    /**
-     * Gets the expiration date as a Date object
+     * Get the expiration date
      *
      * @return The expiration date
      */
-    public Date getValidToAsDate() {
+    public Date getValidTo() {
         return validTo;
     }
 
     /**
-     * Sets the expiration date using a string (yyyy-MM-dd)
+     * Set the expiration date
      *
-     * @param validTo The expiration date string
-     */
-    public void setValidTo(String validTo) {
-        this.validTo = Date.valueOf(validTo);
-    }
-
-    /**
-     * Sets the expiration date using a Date object
-     *
-     * @param validTo The expiration date
+     * @param validTo The expiration date to set
      */
     public void setValidTo(Date validTo) {
         this.validTo = validTo;
     }
 
     /**
-     * Gets the card holder name
+     * Get the card holder name
      *
      * @return The card holder name
      */
     public String getCardHolder() {
-        return cardHolderName;
+        return cardHolder;
     }
 
     /**
-     * Sets the card holder name
+     * Set the card holder name
      *
-     * @param cardHolderName The card holder name to set
+     * @param cardHolder The card holder name to set
      */
-    public void setCardHolder(String cardHolderName) {
-        this.cardHolderName = cardHolderName;
+    public void setCardHolder(String cardHolder) {
+        this.cardHolder = cardHolder;
     }
 
     /**
-     * Gets the user ID
+     * Get the user ID
      *
      * @return The user ID
      */
@@ -136,7 +96,7 @@ public class Card {
     }
 
     /**
-     * Sets the user ID
+     * Set the user ID
      *
      * @param userID The user ID to set
      */
@@ -144,33 +104,13 @@ public class Card {
         this.userID = userID;
     }
 
-    /**
-     * Returns a formatted string representation of the card details
-     * with the card number partially masked for security
-     *
-     * @return Formatted card string
-     */
     @Override
     public String toString() {
-        String maskedNumber = maskCardNumber(cardNumber);
-        return "Card {" +
-                "number='" + maskedNumber + '\'' +
-                ", expires='" + validTo + '\'' +
-                ", holder='" + cardHolderName + '\'' +
+        return "Card{" +
+                "cardNumber='" + cardNumber + '\'' +
+                ", validTo=" + validTo +
+                ", cardHolder='" + cardHolder + '\'' +
+                ", userID=" + userID +
                 '}';
-    }
-
-    /**
-     * Masks a card number for display (e.g., **** **** **** 1234)
-     *
-     * @param number The full card number
-     * @return The masked card number
-     */
-    private String maskCardNumber(String number) {
-        if (number == null || number.length() < 4) {
-            return number;
-        }
-        String lastFour = number.substring(number.length() - 4);
-        return "**** **** **** " + lastFour;
     }
 }

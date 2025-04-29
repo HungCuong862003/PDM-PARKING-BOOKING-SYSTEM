@@ -1,328 +1,144 @@
 package main.java.com.parkeasy.controller.admin;
 
-import main.java.com.parkeasy.model.Admin;
 import main.java.com.parkeasy.model.User;
-import main.java.com.parkeasy.service.AdminService;
-import main.java.com.parkeasy.model.ParkingSpace;
 import main.java.com.parkeasy.model.Reservation;
-import main.java.com.parkeasy.service.ReservationService;
+import main.java.com.parkeasy.service.AdminService;
 import main.java.com.parkeasy.service.UserService;
+import main.java.com.parkeasy.service.ReservationService;
 
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Controller class for managing customer information and interactions.
- * Handles the interaction between the admin customer management interface and
- * the service layer.
+ * Controller for managing customer operations by admins
  */
 public class CustomerManagementController {
+    private static final Logger LOGGER = Logger.getLogger(CustomerManagementController.class.getName());
 
     private final AdminService adminService;
     private final UserService userService;
     private final ReservationService reservationService;
-    private Admin currentAdmin;
 
     /**
-     * Constructor for CustomerManagementController.
-     *
-     * @param currentAdmin The currently logged-in admin
+     * Constructor with dependency injection
      */
-    public CustomerManagementController(Admin currentAdmin) throws SQLException {
-        this.adminService = new AdminService();
-        this.userService = new UserService();
-        this.reservationService = new ReservationService();
-        this.currentAdmin = currentAdmin;
+    public CustomerManagementController(AdminService adminService,
+                                        UserService userService,
+                                        ReservationService reservationService) {
+        this.adminService = adminService;
+        this.userService = userService;
+        this.reservationService = reservationService;
     }
 
     /**
-     * Gets all users in the system.
+     * Get all users in the system
      *
      * @return List of all users
      */
     public List<User> getAllUsers() {
-        return adminService.getAllUsers();
-    }
-
-    /**
-     * Gets detailed information about a specific user.
-     *
-     * @param userID The ID of the user
-     * @return The user if found, null otherwise
-     */
-    public User getUserById(int userID) {
-        return userService.getUserById(userID);
-    }
-
-    /**
-     * Gets all reservations for a specific user.
-     *
-     * @param userID The ID of the user
-     * @return List of reservations made by the user
-     */
-    public List<Reservation> getUserReservations(int userID) {
-        return reservationService.getReservationsByUser(userID);
-    }
-
-    /**
-     * Gets all parking spaces managed by the current admin.
-     *
-     * @return List of parking spaces managed by the current admin
-     */
-    public List<ParkingSpace> getAdminParkingSpaces() {
-        return adminService.getParkingSpacesByAdmin(currentAdmin.getAdminID());
-    }
-
-    /**
-     * Gets all users who have made reservations at parking spaces managed by the
-     * current admin.
-     *
-     * @return List of users who have made reservations at admin's parking spaces
-     */
-    public List<User> getCustomersWithReservations() {
-        // Get all spaces managed by this admin
-        List<ParkingSpace> adminSpaces = getAdminParkingSpaces();
-        List<String> parkingIDs = new ArrayList<>();
-        for (ParkingSpace space : adminSpaces) {
-            parkingIDs.add(space.getParkingID());
+        try {
+            List<User> users = userService.getAllUsers();
+            return users != null ? users : Collections.emptyList();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error retrieving all users", e);
+            return Collections.emptyList();
         }
+    }
 
-        // Get all reservations for these spaces
-        List<Reservation> reservations = new ArrayList<>();
-        for (String parkingID : parkingIDs) {
-            reservations.addAll(reservationService.getReservationsByParkingSpace(parkingID));
+    /**
+     * Get user by ID
+     *
+     * @param userId User ID
+     * @return User object or null if not found
+     */
+    public User getUserById(int userId) {
+        try {
+            return userService.getUserById(userId);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error retrieving user by ID: " + userId, e);
+            return null;
         }
+    }
 
-        // Get unique users from reservations
-        Map<Integer, User> userMap = new HashMap<>();
-        for (Reservation reservation : reservations) {
-            int userID = reservation.getUserID();
-            if (!userMap.containsKey(userID)) {
-                User user = userService.getUserById(userID);
-                if (user != null) {
-                    userMap.put(userID, user);
-                }
+    /**
+     * Search users by criteria (name, email, phone)
+     *
+     * @param searchTerm Search term
+     * @return List of matching users
+     */
+    public List<User> searchUsers(String searchTerm) {
+        try {
+            if (searchTerm == null || searchTerm.trim().isEmpty()) {
+                return Collections.emptyList();
             }
-        }
 
-        return new ArrayList<>(userMap.values());
+            return userService.searchUsers(searchTerm);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error searching users with term: " + searchTerm, e);
+            return Collections.emptyList();
+        }
     }
 
+
     /**
-     * Gets customer usage statistics: number of reservations and total spending.
+     * Get user reservations
      *
-     * @param userID The ID of the user
-     * @return Map with statistics: "reservationCount" and "totalSpending"
+     * @param userId User ID
+     * @return List of reservations
      */
-    public Map<String, Object> getCustomerStats(int userID) {
-        Map<String, Object> stats = new HashMap<>();
-
-        // Get all reservations for this user at admin's parking spaces
-        List<ParkingSpace> adminSpaces = getAdminParkingSpaces();
-        List<String> parkingIDs = new ArrayList<>();
-        for (ParkingSpace space : adminSpaces) {
-            parkingIDs.add(space.getParkingID());
+    public List<Reservation> getUserReservations(int userId) {
+        try {
+            return reservationService.getReservationsByUserId(userId);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error retrieving reservations for user: " + userId, e);
+            return Collections.emptyList();
         }
+    }
 
-        List<Reservation> userReservations = reservationService.getReservationsByUser(userID);
-        List<Reservation> relevantReservations = new ArrayList<>();
 
-        for (Reservation reservation : userReservations) {
-            String parkingID = reservationService.getParkingIDFromSlot(reservation.getSlotID());
-            if (parkingIDs.contains(parkingID)) {
-                relevantReservations.add(reservation);
+    /**
+     * Get detailed user activity
+     *
+     * @param userId User ID
+     * @return Map of user activity data
+     */
+    public Map<String, Object> getUserActivity(int userId) {
+        try {
+            User user = userService.getUserById(userId);
+            if (user == null) {
+                return Collections.emptyMap();
             }
+
+            Map<String, Object> activity = new HashMap<>();
+            activity.put("user", user);
+
+            // Get recent reservations
+            List<Reservation> reservations = reservationService.getReservationsByUserId(userId);
+            activity.put("reservations", reservations);
+            activity.put("reservationCount", reservations.size());
+
+            // Calculate average reservation duration
+            double avgDuration = reservations.stream()
+                    .mapToLong(r -> {
+                        long startTime = r.getStartDate().getTime() + r.getStartTime().getTime();
+                        long endTime = r.getEndDate().getTime() + r.getEndTime().getTime();
+                        return (endTime - startTime) / (1000 * 60); // Minutes
+                    })
+                    .average()
+                    .orElse(0);
+            activity.put("averageReservationDuration", avgDuration);
+
+            // More statistics as needed
+
+            return activity;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error retrieving activity for user: " + userId, e);
+            return Collections.emptyMap();
         }
-
-        // Calculate statistics
-        int reservationCount = relevantReservations.size();
-        BigDecimal totalSpending = BigDecimal.ZERO;
-
-        for (Reservation reservation : relevantReservations) {
-            BigDecimal paymentAmount = reservationService.getPaymentAmount(reservation.getReservationID());
-            if (paymentAmount != null) {
-                totalSpending = totalSpending.add(paymentAmount);
-            }
-        }
-
-        stats.put("reservationCount", reservationCount);
-        stats.put("totalSpending", totalSpending);
-
-        return stats;
-    }
-
-    /**
-     * Gets the most frequent customers based on number of reservations.
-     *
-     * @param limit Maximum number of customers to return
-     * @return List of users sorted by reservation count (highest first)
-     */
-    public List<Map<String, Object>> getTopCustomers(int limit) {
-        List<Map<String, Object>> topCustomers = new ArrayList<>();
-
-        // Get all customers with reservations
-        List<User> customers = getCustomersWithReservations();
-
-        // Calculate statistics for each customer
-        List<Map<String, Object>> customerStats = new ArrayList<>();
-        for (User customer : customers) {
-            Map<String, Object> stats = getCustomerStats(customer.getUserID());
-            stats.put("user", customer);
-            customerStats.add(stats);
-        }
-
-        // Sort by reservation count (descending)
-        customerStats.sort((a, b) -> {
-            Integer countA = (Integer) a.get("reservationCount");
-            Integer countB = (Integer) b.get("reservationCount");
-            return countB.compareTo(countA);
-        });
-
-        // Take the top results
-        int resultCount = Math.min(limit, customerStats.size());
-        for (int i = 0; i < resultCount; i++) {
-            topCustomers.add(customerStats.get(i));
-        }
-
-        return topCustomers;
-    }
-
-    /**
-     * Populates a table model with customer data for display in a JTable.
-     *
-     * @param tableModel The table model to populate
-     * @param customers  The list of customers
-     */
-    public void populateCustomerTable(DefaultTableModel tableModel, List<User> customers) {
-        // Clear existing rows
-        tableModel.setRowCount(0);
-
-        // Add column headers if needed
-        if (tableModel.getColumnCount() == 0) {
-            tableModel.addColumn("User ID");
-            tableModel.addColumn("Name");
-            tableModel.addColumn("Email");
-            tableModel.addColumn("Phone");
-            tableModel.addColumn("Balance");
-        }
-
-        // Add rows for each customer
-        for (User user : customers) {
-            Object[] row = {
-                    user.getUserID(),
-                    user.getUserName(),
-                    user.getEmail(),
-                    user.getPhone(),
-                    "$" + user.getBalance().toString()
-            };
-            tableModel.addRow(row);
-        }
-    }
-
-    /**
-     * Populates a table model with customer reservation data for display in a
-     * JTable.
-     *
-     * @param tableModel The table model to populate
-     * @param userID     The ID of the user whose reservations to display
-     */
-    public void populateUserReservationsTable(DefaultTableModel tableModel, int userID) {
-        // Clear existing rows
-        tableModel.setRowCount(0);
-
-        // Add column headers if needed
-        if (tableModel.getColumnCount() == 0) {
-            tableModel.addColumn("Reservation ID");
-            tableModel.addColumn("Parking Space");
-            tableModel.addColumn("Start Date");
-            tableModel.addColumn("End Date");
-            tableModel.addColumn("Status");
-            tableModel.addColumn("Amount");
-        }
-
-        // Get all reservations for this user at admin's parking spaces
-        List<ParkingSpace> adminSpaces = getAdminParkingSpaces();
-        List<String> parkingIDs = new ArrayList<>();
-        Map<String, String> parkingAddresses = new HashMap<>();
-
-        for (ParkingSpace space : adminSpaces) {
-            parkingIDs.add(space.getParkingID());
-            parkingAddresses.put(space.getParkingID(), space.getParkingAddress());
-        }
-
-        List<Reservation> userReservations = reservationService.getReservationsByUser(userID);
-
-        // Add rows for each reservation at admin's parking spaces
-        for (Reservation reservation : userReservations) {
-            String parkingID = reservationService.getParkingIDFromSlot(reservation.getSlotID());
-
-            if (parkingIDs.contains(parkingID)) {
-                BigDecimal amount = reservationService.getPaymentAmount(reservation.getReservationID());
-
-                Object[] row = {
-                        reservation.getReservationID(),
-                        parkingAddresses.getOrDefault(parkingID, parkingID),
-                        reservation.getStartDate() + " " + reservation.getStartTime(),
-                        reservation.getEndDate() + " " + reservation.getEndTime(),
-                        reservation.getStatus(),
-                        amount != null ? "$" + amount.toString() : "N/A"
-                };
-                tableModel.addRow(row);
-            }
-        }
-    }
-
-    /**
-     * Populates a table model with top customer data for display in a JTable.
-     *
-     * @param tableModel The table model to populate
-     * @param limit      Maximum number of customers to display
-     */
-    public void populateTopCustomersTable(DefaultTableModel tableModel, int limit) {
-        // Clear existing rows
-        tableModel.setRowCount(0);
-
-        // Add column headers if needed
-        if (tableModel.getColumnCount() == 0) {
-            tableModel.addColumn("User ID");
-            tableModel.addColumn("Name");
-            tableModel.addColumn("Email");
-            tableModel.addColumn("Reservations");
-            tableModel.addColumn("Total Spending");
-        }
-
-        // Get top customers with stats
-        List<Map<String, Object>> topCustomers = getTopCustomers(limit);
-
-        // Add rows for each customer
-        for (Map<String, Object> customerData : topCustomers) {
-            User user = (User) customerData.get("user");
-            int reservationCount = (Integer) customerData.get("reservationCount");
-            BigDecimal totalSpending = (BigDecimal) customerData.get("totalSpending");
-
-            Object[] row = {
-                    user.getUserID(),
-                    user.getUserName(),
-                    user.getEmail(),
-                    reservationCount,
-                    "$" + totalSpending.toString()
-            };
-            tableModel.addRow(row);
-        }
-    }
-
-    /**
-     * Sets the current admin user.
-     *
-     * @param admin The new admin user
-     */
-    public void setCurrentAdmin(Admin admin) {
-        this.currentAdmin = admin;
     }
 }

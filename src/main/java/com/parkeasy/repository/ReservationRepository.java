@@ -4,446 +4,450 @@ import main.java.com.parkeasy.model.Reservation;
 import main.java.com.parkeasy.util.DatabaseConnection;
 
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-/**
- * Repository class for managing Reservation entities in the database.
- * Provides CRUD operations for reservations.
- */
 public class ReservationRepository {
+    private static final Logger LOGGER = Logger.getLogger(ReservationRepository.class.getName());
+    private static final String TABLE_NAME = "PARKING_RESERVATION";
 
     /**
-     * Inserts a new reservation into the database.
+     * Insert a new reservation into the database
      *
      * @param reservation The reservation to insert
-     * @return true if insertion was successful, false otherwise
+     * @return ID of the inserted reservation or 0 if failed
      */
-    public boolean insertReservation(Reservation reservation) {
-        String query = "INSERT INTO PARKING_RESERVATION (VehicleID, SlotID, StartDate, StartTime, " +
-                "EndDate, EndTime, Status, CreatedAt, UserID) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)";
-
+    public int insertReservation(Reservation reservation) {
+        String sql = "INSERT INTO " + TABLE_NAME + " (ReservationID, StartDate, EndDate, StartTime, EndTime, CreatedAt, Status, VehicleID, SlotNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            preparedStatement.setInt(1, reservation.getReservationID());
+            preparedStatement.setDate(2, reservation.getStartDate());
+            preparedStatement.setDate(3, reservation.getEndDate());
+            preparedStatement.setTime(4, reservation.getStartTime());
+            preparedStatement.setTime(5, reservation.getEndTime());
+            preparedStatement.setTimestamp(6, reservation.getCreatedAt());
+            preparedStatement.setString(7, reservation.getStatus());
+            preparedStatement.setString(8, reservation.getVehicleID());
+            preparedStatement.setString(9, reservation.getSlotNumber());
 
-            pstmt.setString(1, reservation.getVehicleID());
-            pstmt.setInt(2, reservation.getSlotID());
-            pstmt.setString(3, reservation.getStartDate());
-            pstmt.setString(4, reservation.getStartTime());
-            pstmt.setString(5, reservation.getEndDate());
-            pstmt.setString(6, reservation.getEndTime());
-            pstmt.setString(7, reservation.getStatus());
-            pstmt.setInt(8, reservation.getUserID());
-
-            int affectedRows = pstmt.executeUpdate();
-
-            if (affectedRows > 0) {
-                try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+            int rowsAffected = preparedStatement.executeUpdate();
+            if (rowsAffected > 0) {
+                try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
-                        reservation.setReservationID(generatedKeys.getInt(1));
+                        return generatedKeys.getInt(1);
                     }
                 }
-                return true;
             }
         } catch (SQLException e) {
-            System.err.println("Error inserting reservation: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error inserting reservation", e);
         }
-
-        return false;
+        return 0;
     }
 
+
     /**
-     * Retrieves a reservation by its ID.
+     * Get a reservation by its ID
      *
-     * @param reservationID The ID of the reservation to retrieve
-     * @return The found Reservation or null if not found
+     * @param reservationID The ID of the reservation
+     * @return The reservation or null if not found
      */
     public Reservation getReservationById(int reservationID) {
-        String query = "SELECT r.*, v.UserID FROM PARKING_RESERVATION r " +
-                "JOIN VEHICLE v ON r.VehicleID = v.VehicleID " +
-                "WHERE r.ReservationID = ?";
-
+        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE ReservationID = ?";
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
-
-            pstmt.setInt(1, reservationID);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapResultSetToReservation(rs);
-                }
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setInt(1, reservationID);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return extractReservationFromResultSet(resultSet);
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving reservation by ID: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting reservation by ID", e);
         }
-
         return null;
     }
 
     /**
-     * Retrieves all reservations for a specific vehicle.
+     * Get all reservations by vehicle ID
      *
      * @param vehicleID The ID of the vehicle
-     * @return A list of reservations for the specified vehicle
+     * @return List of reservations for the vehicle
      */
     public List<Reservation> getReservationsByVehicleId(String vehicleID) {
         List<Reservation> reservations = new ArrayList<>();
-        String query = "SELECT r.*, v.UserID FROM PARKING_RESERVATION r " +
-                "JOIN VEHICLE v ON r.VehicleID = v.VehicleID " +
-                "WHERE r.VehicleID = ?";
-
+        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE VehicleID = ?";
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
-
-            pstmt.setString(1, vehicleID);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    reservations.add(mapResultSetToReservation(rs));
-                }
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, vehicleID);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                reservations.add(extractReservationFromResultSet(resultSet));
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving reservations by vehicle ID: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting reservations by vehicle ID", e);
         }
-
         return reservations;
     }
 
     /**
-     * Retrieves all reservations for a specific parking slot.
+     * Get all reservations by parking slot number
      *
-     * @param slotID The ID of the parking slot
-     * @return A list of reservations for the specified parking slot
+     * @param slotNumber The number of the parking slot
+     * @return List of reservations for the slot
      */
-    public List<Reservation> getReservationsByParkingSlotId(int slotID) {
+    public List<Reservation> getReservationsByParkingSlotNumber(String slotNumber) {
         List<Reservation> reservations = new ArrayList<>();
-        String query = "SELECT r.*, v.UserID FROM PARKING_RESERVATION r " +
-                "JOIN VEHICLE v ON r.VehicleID = v.VehicleID " +
-                "WHERE r.SlotID = ?";
-
+        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE SlotNumber = ?";
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
-
-            pstmt.setInt(1, slotID);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    reservations.add(mapResultSetToReservation(rs));
-                }
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, slotNumber);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                reservations.add(extractReservationFromResultSet(resultSet));
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving reservations by parking slot ID: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting reservations by slot number", e);
         }
-
         return reservations;
     }
 
     /**
-     * Retrieves all reservations made by a specific user.
-     *
-     * @param userID The ID of the user
-     * @return A list of reservations made by the specified user
-     */
-    public List<Reservation> getReservationsByUserId(int userID) {
-        List<Reservation> reservations = new ArrayList<>();
-        String query = "SELECT r.*, v.UserID FROM PARKING_RESERVATION r " +
-                "JOIN VEHICLE v ON r.VehicleID = v.VehicleID " +
-                "WHERE v.UserID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
-
-            pstmt.setInt(1, userID);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    reservations.add(mapResultSetToReservation(rs));
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error retrieving reservations by user ID: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return reservations;
-    }
-
-    /**
-     * Retrieves reservations within a specific date range for a parking slot.
-     *
-     * @param slotID The ID of the parking slot
-     * @param startDate The start date of the range
-     * @param endDate The end date of the range
-     * @return A list of reservations in the specified date range for the slot
-     */
-    public List<Reservation> getReservationsByDateRange(int slotID, String startDate, String endDate) {
-        List<Reservation> reservations = new ArrayList<>();
-        String query = "SELECT r.*, v.UserID FROM PARKING_RESERVATION r " +
-                "JOIN VEHICLE v ON r.VehicleID = v.VehicleID " +
-                "WHERE r.SlotID = ? AND " +
-                "((r.StartDate BETWEEN ? AND ?) OR (r.EndDate BETWEEN ? AND ?)) AND " +
-                "r.Status = 'ACTIVE'";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
-
-            pstmt.setInt(1, slotID);
-            pstmt.setString(2, startDate);
-            pstmt.setString(3, endDate);
-            pstmt.setString(4, startDate);
-            pstmt.setString(5, endDate);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    reservations.add(mapResultSetToReservation(rs));
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Error retrieving reservations by date range: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return reservations;
-    }
-
-    /**
-     * Deletes a reservation by its ID.
+     * Delete a reservation by its ID
      *
      * @param reservationID The ID of the reservation to delete
-     * @return true if deletion was successful, false otherwise
+     * @return true if successful, false otherwise
      */
     public boolean deleteReservationById(int reservationID) {
-        String query = "DELETE FROM PARKING_RESERVATION WHERE ReservationID = ?";
-
+        String sql = "DELETE FROM " + TABLE_NAME + " WHERE ReservationID = ?";
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
-
-            pstmt.setInt(1, reservationID);
-
-            int affectedRows = pstmt.executeUpdate();
-            return affectedRows > 0;
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setInt(1, reservationID);
+            int rowsAffected = preparedStatement.executeUpdate();
+            return rowsAffected > 0;
         } catch (SQLException e) {
-            System.err.println("Error deleting reservation: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error deleting reservation by ID", e);
         }
-
         return false;
     }
 
     /**
-     * Updates an existing reservation.
+     * Update a reservation by its ID
      *
      * @param reservationID The ID of the reservation to update
-     * @param reservation The updated reservation information
-     * @return true if update was successful, false otherwise
+     * @param reservation The updated reservation data
+     * @return true if successful, false otherwise
      */
     public boolean updateReservationById(int reservationID, Reservation reservation) {
-        String query = "UPDATE PARKING_RESERVATION SET VehicleID = ?, SlotID = ?, " +
-                "StartDate = ?, StartTime = ?, EndDate = ?, EndTime = ?, Status = ?, UserID = ? " +
-                "WHERE ReservationID = ?";
-
+        String sql = "UPDATE " + TABLE_NAME + " SET StartDate = ?, EndDate = ?, StartTime = ?, EndTime = ?, CreatedAt = ?, Status = ?, VehicleID = ?, SlotNumber = ? WHERE ReservationID = ?";
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
-
-            pstmt.setString(1, reservation.getVehicleID());
-            pstmt.setInt(2, reservation.getSlotID());
-            pstmt.setString(3, reservation.getStartDate());
-            pstmt.setString(4, reservation.getStartTime());
-            pstmt.setString(5, reservation.getEndDate());
-            pstmt.setString(6, reservation.getEndTime());
-            pstmt.setString(7, reservation.getStatus());
-            pstmt.setInt(8, reservation.getUserID());
-            pstmt.setInt(9, reservationID);
-
-            int affectedRows = pstmt.executeUpdate();
-            return affectedRows > 0;
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setDate(1, reservation.getStartDate());
+            preparedStatement.setDate(2, reservation.getEndDate());
+            preparedStatement.setTime(3, reservation.getStartTime());
+            preparedStatement.setTime(4, reservation.getEndTime());
+            preparedStatement.setTimestamp(5, reservation.getCreatedAt());
+            preparedStatement.setString(6, reservation.getStatus());
+            preparedStatement.setString(7, reservation.getVehicleID());
+            preparedStatement.setString(8, reservation.getSlotNumber());
+            preparedStatement.setInt(9, reservationID);
+            int rowsAffected = preparedStatement.executeUpdate();
+            return rowsAffected > 0;
         } catch (SQLException e) {
-            System.err.println("Error updating reservation: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error updating reservation by ID", e);
         }
-
         return false;
     }
 
     /**
-     * Checks if a parking slot is available for a specific time period.
+     * Gets the most popular parking space (most reservations) within a time period
      *
-     * @param slotID The ID of the parking slot
-     * @param startDate The start date of the period
-     * @param startTime The start time of the period
-     * @param endDate The end date of the period
-     * @param endTime The end time of the period
-     * @return true if the slot is available, false otherwise
+     * @param startDate Start date of the period
+     * @param endDate End date of the period
+     * @return Name of the most popular parking space
      */
-    public boolean checkSlotAvailability(int slotID, String startDate, String startTime, String endDate, String endTime) {
-        String query = "SELECT COUNT(*) FROM PARKING_RESERVATION WHERE SlotID = ? AND Status = 'ACTIVE' AND " +
-                "((? BETWEEN StartDate AND EndDate) OR " +
-                "(? BETWEEN StartDate AND EndDate) OR " +
-                "(StartDate BETWEEN ? AND ?) OR " +
-                "(EndDate BETWEEN ? AND ?))";
-
-        if (startDate.equals(endDate)) {
-            // If same day, also check time overlaps
-            query += " AND ((? = StartDate AND ? = EndDate AND " +
-                    "((? BETWEEN StartTime AND EndTime) OR " +
-                    "(? BETWEEN StartTime AND EndTime) OR " +
-                    "(StartTime BETWEEN ? AND ?) OR " +
-                    "(EndTime BETWEEN ? AND ?))))";
-        }
+    public String getMostPopularParkingSpace(LocalDateTime startDate, LocalDateTime endDate) {
+        String sql = "SELECT ps.ParkingAddress, COUNT(r.ReservationID) as ReservationCount " +
+                "FROM " + TABLE_NAME + " r " +
+                "JOIN parkingslot s ON r.SlotNumber = s.SlotNumber " +
+                "JOIN parkingspace ps ON s.ParkingID = ps.ParkingID " +
+                "WHERE r.CreatedAt BETWEEN ? AND ? " +
+                "GROUP BY ps.ParkingID " +
+                "ORDER BY ReservationCount DESC " +
+                "LIMIT 1";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
-            pstmt.setInt(1, slotID);
-            pstmt.setString(2, startDate);
-            pstmt.setString(3, endDate);
-            pstmt.setString(4, startDate);
-            pstmt.setString(5, endDate);
-            pstmt.setString(6, startDate);
-            pstmt.setString(7, endDate);
+            preparedStatement.setTimestamp(1, Timestamp.valueOf(startDate));
+            preparedStatement.setTimestamp(2, Timestamp.valueOf(endDate));
 
-            if (startDate.equals(endDate)) {
-                pstmt.setString(8, startDate);
-                pstmt.setString(9, endDate);
-                pstmt.setString(10, startTime);
-                pstmt.setString(11, endTime);
-                pstmt.setString(12, startTime);
-                pstmt.setString(13, endTime);
-                pstmt.setString(14, startTime);
-                pstmt.setString(15, endTime);
-            }
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    int count = rs.getInt(1);
-                    return count == 0; // Available if no overlapping reservations
-                }
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getString("ParkingAddress");
             }
         } catch (SQLException e) {
-            System.err.println("Error checking slot availability: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting most popular parking space", e);
         }
 
-        return false; // Default to unavailable if there's an error
+        return "N/A";
     }
 
     /**
-     * Retrieves all reservations with a specific status.
+     * Gets the most popular parking space managed by a specific admin
      *
-     * @param status The status to filter by
-     * @return A list of reservations with the specified status
+     * @param adminId The ID of the admin
+     * @param startDate Start date of the period
+     * @param endDate End date of the period
+     * @return Name of the most popular parking space
      */
-    public List<Reservation> getReservationsByStatus(String status) {
-        List<Reservation> reservations = new ArrayList<>();
-        String query = "SELECT r.*, v.UserID FROM PARKING_RESERVATION r " +
-                "JOIN VEHICLE v ON r.VehicleID = v.VehicleID " +
-                "WHERE r.Status = ?";
+    public String getMostPopularParkingSpaceByAdminId(int adminId, LocalDateTime startDate, LocalDateTime endDate) {
+        String sql = "SELECT ps.ParkingAddress, COUNT(r.ReservationID) as ReservationCount " +
+                "FROM " + TABLE_NAME + " r " +
+                "JOIN parkingslot s ON r.SlotNumber = s.SlotNumber " +
+                "JOIN parkingspace ps ON s.ParkingID = ps.ParkingID " +
+                "WHERE r.CreatedAt BETWEEN ? AND ? " +
+                "AND ps.AdminID = ? " +
+                "GROUP BY ps.ParkingID " +
+                "ORDER BY ReservationCount DESC " +
+                "LIMIT 1";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
-            pstmt.setString(1, status);
+            preparedStatement.setTimestamp(1, Timestamp.valueOf(startDate));
+            preparedStatement.setTimestamp(2, Timestamp.valueOf(endDate));
+            preparedStatement.setInt(3, adminId);
 
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    reservations.add(mapResultSetToReservation(rs));
-                }
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getString("ParkingAddress");
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving reservations by status: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting most popular parking space by admin ID", e);
+        }
+
+        return "N/A";
+    }
+
+    /**
+     * Gets recent reservations for specific parking spaces
+     *
+     * @param parkingIds List of parking space IDs
+     * @param limit Maximum number of reservations to return
+     * @return List of recent reservations
+     */
+    public List<Reservation> getRecentReservationsByParkingIds(List<String> parkingIds, int limit) {
+        List<Reservation> reservations = new ArrayList<>();
+
+        if (parkingIds == null || parkingIds.isEmpty()) {
+            return reservations;
+        }
+
+        // Building the SQL with placeholders for the IN clause
+        StringBuilder placeholders = new StringBuilder();
+        for (int i = 0; i < parkingIds.size(); i++) {
+            placeholders.append("?");
+            if (i < parkingIds.size() - 1) {
+                placeholders.append(",");
+            }
+        }
+
+        String sql = "SELECT r.* FROM " + TABLE_NAME + " r " +
+                "JOIN parkingslot s ON r.SlotNumber = s.SlotNumber " +
+                "WHERE s.ParkingID IN (" + placeholders.toString() + ") " +
+                "ORDER BY r.CreatedAt DESC " +
+                "LIMIT ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
+            // Set the parking IDs in the IN clause
+            for (int i = 0; i < parkingIds.size(); i++) {
+                preparedStatement.setString(i + 1, parkingIds.get(i));
+            }
+
+            // Set the limit parameter
+            preparedStatement.setInt(parkingIds.size() + 1, limit);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                reservations.add(extractReservationFromResultSet(resultSet));
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting recent reservations by parking IDs", e);
         }
 
         return reservations;
     }
 
     /**
-     * Retrieves all reservations from the database.
+     * Checks if a vehicle has any active reservations
      *
-     * @return A list of all reservations
+     * @param vehicleID The ID of the vehicle to check
+     * @return true if the vehicle has active reservations, false otherwise
      */
-    public List<Reservation> getAllReservations() {
-        List<Reservation> reservations = new ArrayList<>();
-        String query = "SELECT r.*, v.UserID FROM PARKING_RESERVATION r " +
-                "JOIN VEHICLE v ON r.VehicleID = v.VehicleID";
-
+    public static boolean hasActiveReservations(String vehicleID) {
+        String sql = "SELECT COUNT(*) FROM " + TABLE_NAME + " WHERE VehicleID = ? AND Status IN ('CONFIRMED', 'ACTIVE', 'PENDING')";
         try (Connection connection = DatabaseConnection.getConnection();
-             Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
-            while (rs.next()) {
-                reservations.add(mapResultSetToReservation(rs));
+            preparedStatement.setString(1, vehicleID);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            if (resultSet.next()) {
+                // If count is greater than 0, vehicle has active reservations
+                return resultSet.getInt(1) > 0;
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving all reservations: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error checking for active reservations for vehicle: " + vehicleID, e);
+        }
+
+        // In case of error, assume there are active reservations to be safe
+        return true;
+    }
+
+    /**
+     * Gets all reservations for a specific parking space within a date range
+     *
+     * @param parkingId The ID of the parking space
+     * @param startDate The start date
+     * @param endDate The end date
+     * @return List of reservations matching the criteria
+     */
+    public List<Reservation> getReservationsByParkingIdAndDateRange(String parkingId, Date startDate, Date endDate) {
+        List<Reservation> reservations = new ArrayList<>();
+        String sql = "SELECT r.* FROM " + TABLE_NAME + " r " +
+                "JOIN parkingslot ps ON r.SlotNumber = ps.SlotNumber " +
+                "WHERE ps.ParkingID = ? " +
+                "AND ((r.StartDate BETWEEN ? AND ?) OR (r.EndDate BETWEEN ? AND ?))";
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setString(1, parkingId);
+
+            // Convert Java util Date to SQL Date
+            java.sql.Date sqlStartDate = new java.sql.Date(startDate.getTime());
+            java.sql.Date sqlEndDate = new java.sql.Date(endDate.getTime());
+
+            preparedStatement.setDate(2, sqlStartDate);
+            preparedStatement.setDate(3, sqlEndDate);
+            preparedStatement.setDate(4, sqlStartDate);
+            preparedStatement.setDate(5, sqlEndDate);
+
+            resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                reservations.add(extractReservationFromResultSet(resultSet));
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting reservations by parking ID and date range: " + parkingId, e);
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
 
         return reservations;
     }
 
     /**
-     * Updates the status of a reservation.
+     * Gets all reservations for a specific user
      *
-     * @param reservationID The ID of the reservation
-     * @param status The new status
-     * @return true if update was successful, false otherwise
+     * @param userId The ID of the user
+     * @return List of reservations for the user
      */
-    public boolean updateReservationStatus(int reservationID, String status) {
-        String query = "UPDATE PARKING_RESERVATION SET Status = ? WHERE ReservationID = ?";
+    public List<Reservation> getReservationsByUserId(int userId) {
+        List<Reservation> reservations = new ArrayList<>();
+        String sql = "SELECT r.* FROM " + TABLE_NAME + " r " +
+                "JOIN vehicle v ON r.VehicleID = v.VehicleID " +
+                "WHERE v.UserID = ?";
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = connection.prepareStatement(query)) {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
 
-            pstmt.setString(1, status);
-            pstmt.setInt(2, reservationID);
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setInt(1, userId);
 
-            int affectedRows = pstmt.executeUpdate();
-            return affectedRows > 0;
+            resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                reservations.add(extractReservationFromResultSet(resultSet));
+            }
         } catch (SQLException e) {
-            System.err.println("Error updating reservation status: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting reservations by user ID: " + userId, e);
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
 
-        return false;
+        return reservations;
     }
 
     /**
-     * Helper method to map ResultSet to Reservation object.
+     * Gets count of active reservations for a specific user
      *
-     * @param rs The ResultSet containing reservation data
-     * @return A Reservation object
-     * @throws SQLException if there's an error accessing the ResultSet
+     * @param userId The ID of the user
+     * @return Count of active reservations
      */
-    private Reservation mapResultSetToReservation(ResultSet rs) throws SQLException {
-        int reservationID = rs.getInt("ReservationID");
-        java.sql.Date startDate = rs.getDate("StartDate");
-        java.sql.Date endDate = rs.getDate("EndDate");
-        java.sql.Time startTime = rs.getTime("StartTime");
-        java.sql.Time endTime = rs.getTime("EndTime");
-        java.sql.Timestamp createdAt = rs.getTimestamp("CreatedAt");
-        String status = rs.getString("Status");
-        String vehicleID = rs.getString("VehicleID");
-        int slotID = rs.getInt("SlotID");
-        int userID = rs.getInt("UserID");
+    public int getActiveReservationCountByUserId(int userId) {
+        String sql = "SELECT COUNT(*) FROM " + TABLE_NAME + " r " +
+                "JOIN vehicle v ON r.VehicleID = v.VehicleID " +
+                "WHERE v.UserID = ? AND r.Status IN ('CONFIRMED', 'ACTIVE', 'PENDING')";
 
-        Reservation reservation = new Reservation(
-                reservationID,
-                startDate,
-                endDate,
-                startTime,
-                endTime,
-                createdAt,
-                status,
-                vehicleID,
-                slotID,
-                userID
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = DatabaseConnection.getConnection();
+            preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setInt(1, userId);
+
+            resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt(1);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting active reservation count by user ID: " + userId, e);
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closeStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
+        }
+
+        return 0;
+    }
+
+
+    /**
+     * Helper method to extract a Reservation object from a ResultSet
+     *
+     * @param resultSet The ResultSet to extract from
+     * @return The extracted Reservation object
+     * @throws SQLException if a database error occurs
+     */
+    private Reservation extractReservationFromResultSet(ResultSet resultSet) throws SQLException {
+        return new Reservation(
+                resultSet.getInt("ReservationID"),
+                resultSet.getDate("StartDate"),
+                resultSet.getDate("EndDate"),
+                resultSet.getTime("StartTime"),
+                resultSet.getTime("EndTime"),
+                resultSet.getTimestamp("CreatedAt"),
+                resultSet.getString("Status"),
+                resultSet.getString("VehicleID"),
+                resultSet.getString("SlotNumber")
         );
-
-        return reservation;
     }
 }

@@ -2,160 +2,355 @@ package main.java.com.parkeasy.controller.user;
 
 import main.java.com.parkeasy.model.ParkingSpace;
 import main.java.com.parkeasy.model.Reservation;
+import main.java.com.parkeasy.model.User;
 import main.java.com.parkeasy.model.Vehicle;
+import main.java.com.parkeasy.service.PaymentService;
 import main.java.com.parkeasy.service.ParkingSpaceService;
 import main.java.com.parkeasy.service.ReservationService;
+import main.java.com.parkeasy.service.UserService;
 import main.java.com.parkeasy.service.VehicleService;
-import main.java.com.parkeasy.service.PaymentService;
-import main.java.com.parkeasy.repository.PaymentRepository;
-import main.java.com.parkeasy.util.DateTimeUtil;
+import main.java.com.parkeasy.util.Constants;
 
-import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Controller for the user dashboard which displays an overview of parking activities
+ * Controller for handling user dashboard operations
  */
 public class UserDashboardController {
-    private ReservationService reservationService;
-    private ParkingSpaceService parkingSpaceService;
-    private VehicleService vehicleService;
-    private PaymentService paymentService;
-    private int currentUserId;
+    private static final Logger LOGGER = Logger.getLogger(UserDashboardController.class.getName());
+
+    private final UserService userService;
+    private final VehicleService vehicleService;
+    private final ReservationService reservationService;
+    private final ParkingSpaceService parkingSpaceService;
+    private final PaymentService paymentService;
 
     /**
-     * Constructor for UserDashboardController
-     * @param userId The ID of the current logged-in user
+     * Constructor with dependency injection
      */
-    public UserDashboardController(int userId) {
-        this.reservationService = new ReservationService();
-        this.parkingSpaceService = new ParkingSpaceService();
-        this.vehicleService = new VehicleService();
-        this.paymentService = new PaymentService(new PaymentRepository());
-        this.currentUserId = userId;
+    public UserDashboardController(UserService userService, VehicleService vehicleService,
+                                   ReservationService reservationService,
+                                   ParkingSpaceService parkingSpaceService,
+                                   PaymentService paymentService) {
+        this.userService = userService;
+        this.vehicleService = vehicleService;
+        this.reservationService = reservationService;
+        this.parkingSpaceService = parkingSpaceService;
+        this.paymentService = paymentService;
     }
 
     /**
-     * Gets all active parking information for the current user
-     * @return A list of maps containing parking information for each vehicle
+     * Get dashboard summary for a user
+     *
+     * @param userId The ID of the user
+     * @return Map containing dashboard summary data
      */
-    public List<Map<String, Object>> getActiveParkingInfo() {
-        List<Map<String, Object>> parkingInfoList = new ArrayList<>();
+    public Map<String, Object> getDashboardSummary(int userId) {
+        Map<String, Object> summary = new HashMap<>();
 
-        // Get all vehicles for the user
-        List<Vehicle> userVehicles = vehicleService.getVehiclesByUserId(currentUserId);
+        try {
+            // Get user information
+            User user = userService.getUserById(userId);
+            if (user == null) {
+                LOGGER.log(Level.WARNING, "User not found: {0}", userId);
+                return Map.of(
+                        "success", false,
+                        "message", "User not found"
+                );
+            }
 
-        for (Vehicle vehicle : userVehicles) {
-            // Get active reservations for this vehicle
-            List<Reservation> activeReservations = reservationService.getReservationsByVehicleId(vehicle.getVehicleID());
+            summary.put("user", user);
 
-            for (Reservation reservation : activeReservations) {
-                if ("ACTIVE".equals(reservation.getStatus())) {
-                    Map<String, Object> parkingInfo = new HashMap<>();
+            // Get user's vehicles
+            List<Vehicle> vehicles = vehicleService.getVehiclesByUserId(userId);
+            summary.put("vehicleCount", vehicles.size());
+            summary.put("vehicles", vehicles);
 
-                    // Get parking space details
-                    String parkingId = reservationService.getParkingIDFromSlot(reservation.getSlotID());
-                    ParkingSpace parkingSpace = parkingSpaceService.getParkingSpaceById(parkingId);
+            // Get active reservations
+            List<Map<String, Object>> activeReservations = new ArrayList<>();
+            for (Vehicle vehicle : vehicles) {
+                List<Reservation> vehicleReservations = reservationService.getReservationsByVehicleId(vehicle.getVehicleID());
 
-                    // Calculate parking duration and cost
-                    long durationInMinutes = DateTimeUtil.calculateDurationInMinutes(
-                            reservation.getStartDate().toString(),
-                            reservation.getStartTime().toString(),
-                            reservation.getEndDate().toString(),
-                            reservation.getEndTime().toString());
+                for (Reservation reservation : vehicleReservations) {
+                    if ((reservation.getStatus().equals(Constants.RESERVATION_PENDING) ||
+                            reservation.getStatus().equals(Constants.RESERVATION_PAID)) &&
+                            isReservationActive(reservation)) {
 
-                    BigDecimal cost = paymentService.calculateCost(parkingSpace.getCostOfParking(), durationInMinutes);
-
-                    // Populate parking info
-                    parkingInfo.put("vehicleId", vehicle.getVehicleID());
-                    parkingInfo.put("parkingAddress", parkingSpace.getParkingAddress());
-                    parkingInfo.put("startDate", reservation.getStartDate());
-                    parkingInfo.put("startTime", reservation.getStartTime());
-                    parkingInfo.put("duration", DateTimeUtil.formatDuration(durationInMinutes));
-                    parkingInfo.put("cost", cost);
-                    parkingInfo.put("reservationId", reservation.getReservationID());
-
-                    parkingInfoList.add(parkingInfo);
+                        Map<String, Object> resDetails = getReservationWithDetails(reservation, vehicle);
+                        if (resDetails != null) {
+                            activeReservations.add(resDetails);
+                        }
+                    }
                 }
             }
-        }
 
-        return parkingInfoList;
-    }
+            // Sort active reservations by start time (soonest first)
+            List<Map<String, Object>> sortedActiveReservations = activeReservations.stream()
+                    .sorted(Comparator.comparing(map -> (LocalDateTime)map.get("startDateTime")))
+                    .collect(Collectors.toList());
 
-    /**
-     * Gets the count of currently active parking spots used by the user
-     * @return The number of active reservations
-     */
-    public int getActiveParkingCount() {
-        int count = 0;
+            summary.put("activeReservations", sortedActiveReservations);
+            summary.put("activeReservationCount", sortedActiveReservations.size());
 
-        // Get all vehicles for the user
-        List<Vehicle> userVehicles = vehicleService.getVehiclesByUserId(currentUserId);
+            // Get upcoming reservations (not started yet)
+            List<Map<String, Object>> upcomingReservations = sortedActiveReservations.stream()
+                    .filter(map -> ((LocalDateTime)map.get("startDateTime")).isAfter(LocalDateTime.now()))
+                    .collect(Collectors.toList());
 
-        for (Vehicle vehicle : userVehicles) {
-            // Get active reservations for this vehicle
-            List<Reservation> activeReservations = reservationService.getReservationsByVehicleId(vehicle.getVehicleID());
+            summary.put("upcomingReservations", upcomingReservations);
+            summary.put("upcomingReservationCount", upcomingReservations.size());
 
-            for (Reservation reservation : activeReservations) {
-                if ("ACTIVE".equals(reservation.getStatus())) {
-                    count++;
+            // Get current reservations (already started but not ended)
+            List<Map<String, Object>> currentReservations = sortedActiveReservations.stream()
+                    .filter(map ->
+                            ((LocalDateTime)map.get("startDateTime")).isBefore(LocalDateTime.now()) &&
+                                    ((LocalDateTime)map.get("endDateTime")).isAfter(LocalDateTime.now())
+                    )
+                    .collect(Collectors.toList());
+
+            summary.put("currentReservations", currentReservations);
+            summary.put("currentReservationCount", currentReservations.size());
+
+            // Get total spent on parking
+            double totalSpent = paymentService.getTotalAmountByUserId(userId);
+            summary.put("totalSpent", totalSpent);
+
+            // Get recently used parking spaces
+            List<String> recentParkingIds = reservationService.getRecentParkingSpaceIdsForUser(userId, 5);
+            List<ParkingSpace> recentParkingSpaces = new ArrayList<>();
+
+            for (String parkingId : recentParkingIds) {
+                ParkingSpace space = parkingSpaceService.getParkingSpaceById(parkingId);
+                if (space != null) {
+                    recentParkingSpaces.add(space);
                 }
             }
+
+            summary.put("recentParkingSpaces", recentParkingSpaces);
+
+            // Get pending payments
+            int pendingPayments = reservationService.countPendingPaymentReservationsForUser(userId);
+            summary.put("pendingPayments", pendingPayments);
+
+            summary.put("success", true);
+
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error generating dashboard summary for user: " + userId, e);
+            summary.put("success", false);
+            summary.put("message", "Error generating dashboard summary: " + e.getMessage());
         }
 
-        return count;
+        return summary;
     }
 
     /**
-     * Gets total spending on parking fees for the current user
-     * @return The total amount spent on parking
+     * Get quick stats for user
+     *
+     * @param userId The ID of the user
+     * @return Map containing quick statistics
      */
-    public BigDecimal getTotalSpending() {
-        return paymentService.getTotalPaymentsByUser(currentUserId);
+    public Map<String, Object> getQuickStats(int userId) {
+        try {
+            Map<String, Object> stats = new HashMap<>();
+
+            // Get user balance
+            User user = userService.getUserById(userId);
+            if (user != null) {
+                stats.put("balance", user.getBalance());
+            }
+
+            // Count vehicles
+            int vehicleCount = vehicleService.countUserVehicles(userId);
+            stats.put("vehicleCount", vehicleCount);
+
+            // Count active reservations
+            int activeReservations = reservationService.countActiveReservationsForUser(userId);
+            stats.put("activeReservations", activeReservations);
+
+            // Count total reservations
+            int totalReservations = reservationService.countTotalReservationsForUser(userId);
+            stats.put("totalReservations", totalReservations);
+
+            // Get total spent
+            double totalSpent = paymentService.getTotalAmountByUserId(userId);
+            stats.put("totalSpent", totalSpent);
+
+            // Get this month's spend
+            LocalDateTime firstDayOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+            double monthlySpend = paymentService.getTotalAmountByUserIdAndDateRange(userId, firstDayOfMonth, LocalDateTime.now());
+            stats.put("monthlySpend", monthlySpend);
+
+            return stats;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error retrieving quick stats for user: " + userId, e);
+            return Map.of(
+                    "error", true,
+                    "message", "Error retrieving statistics"
+            );
+        }
     }
 
     /**
-     * Gets the reservation history for the current user
-     * @param limit The maximum number of records to return
-     * @return A list of maps containing reservation history information
+     * Get reservation recommendations based on user history
+     *
+     * @param userId The ID of the user
+     * @return List of recommended parking spaces
      */
-    public List<Map<String, Object>> getReservationHistory(int limit) {
-        List<Map<String, Object>> historyList = new ArrayList<>();
+    public List<ParkingSpace> getRecommendedParkingSpaces(int userId) {
+        try {
+            // Get frequently used parking spaces
+            List<String> frequentParkingIds = reservationService.getFrequentParkingSpaceIdsForUser(userId, 3);
 
-        // Get all reservations for the user
-        List<Reservation> userReservations = reservationService.getReservationsByUser(currentUserId);
+            // Get highest rated parking spaces
+            List<String> highestRatedParkingIds = parkingSpaceService.getHighestRatedParkingSpaceIds(5);
 
-        // Sort by creation date (newest first) and limit results
-        userReservations.sort((r1, r2) -> r2.getCreatedAt().compareTo(r1.getCreatedAt()));
+            // Combine and remove duplicates
+            List<String> recommendedIds = new ArrayList<>(frequentParkingIds);
+            for (String id : highestRatedParkingIds) {
+                if (!recommendedIds.contains(id)) {
+                    recommendedIds.add(id);
+                }
+            }
 
-        int count = 0;
-        for (Reservation reservation : userReservations) {
-            if (count >= limit) break;
-
-            Map<String, Object> historyItem = new HashMap<>();
+            // Limit to 5 recommendations
+            if (recommendedIds.size() > 5) {
+                recommendedIds = recommendedIds.subList(0, 5);
+            }
 
             // Get parking space details
-            String parkingId = reservationService.getParkingIDFromSlot(reservation.getSlotID());
-            ParkingSpace parkingSpace = parkingSpaceService.getParkingSpaceById(parkingId);
+            List<ParkingSpace> recommendations = new ArrayList<>();
+            for (String id : recommendedIds) {
+                ParkingSpace space = parkingSpaceService.getParkingSpaceById(id);
+                if (space != null) {
+                    recommendations.add(space);
+                }
+            }
 
-            // Get payment amount
-            BigDecimal paymentAmount = reservationService.getPaymentAmount(reservation.getReservationID());
-
-            // Populate history item
-            historyItem.put("startDate", reservation.getStartDate());
-            historyItem.put("endDate", reservation.getEndDate());
-            historyItem.put("status", reservation.getStatus());
-            historyItem.put("amount", paymentAmount);
-            historyItem.put("reservationId", reservation.getReservationID());
-
-            historyList.add(historyItem);
-            count++;
+            return recommendations;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting parking recommendations for user: " + userId, e);
+            return List.of(); // Return empty list on error
         }
+    }
 
-        return historyList;
+    /**
+     * Get recent activity for a user
+     *
+     * @param userId The ID of the user
+     * @param limit Maximum number of activities to return
+     * @return List of recent activities
+     */
+    public List<Map<String, Object>> getRecentActivity(int userId, int limit) {
+        try {
+            List<Map<String, Object>> activities = new ArrayList<>();
+
+            // Get recent reservations
+            List<Reservation> recentReservations = reservationService.getRecentReservationsForUser(userId, limit);
+
+            for (Reservation reservation : recentReservations) {
+                Vehicle vehicle = vehicleService.getVehicleById(reservation.getVehicleID());
+
+                if (vehicle != null) {
+                    Map<String, Object> resDetails = getReservationWithDetails(reservation, vehicle);
+
+                    if (resDetails != null) {
+                        // Add activity type and timestamp
+                        Map<String, Object> activity = new HashMap<>();
+                        activity.put("type", "RESERVATION");
+                        activity.put("timestamp", reservation.getCreatedAt());
+                        activity.put("details", resDetails);
+
+                        activities.add(activity);
+                    }
+                }
+            }
+
+
+            // Sort by timestamp (most recent first)
+            return activities.stream()
+                    .sorted((a, b) -> {
+                        Timestamp timestampA = (Timestamp) a.get("timestamp");
+                        Timestamp timestampB = (Timestamp) b.get("timestamp");
+                        return timestampB.compareTo(timestampA); // Reversed order for newest first
+                    })
+                    .limit(limit)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error retrieving recent activity for user: " + userId, e);
+            return List.of(); // Return empty list on error
+        }
+    }
+
+    /**
+     * Helper method to check if a reservation is active
+     */
+    private boolean isReservationActive(Reservation reservation) {
+        LocalDateTime endDateTime = LocalDateTime.of(
+                reservation.getEndDate().toLocalDate(),
+                reservation.getEndTime().toLocalTime()
+        );
+
+        return endDateTime.isAfter(LocalDateTime.now());
+    }
+
+    /**
+     * Helper method to get reservation with additional details
+     */
+    private Map<String, Object> getReservationWithDetails(Reservation reservation, Vehicle vehicle) {
+        try {
+            // Get slot and parking space details
+            String slotNumber = reservation.getSlotNumber();
+            String parkingAddress = "Unknown";
+            String parkingId = null;
+
+            try {
+                String parkingSpaceId = reservationService.getParkingIdBySlotNumber(slotNumber);
+                parkingId = parkingSpaceId;
+
+                if (parkingSpaceId != null) {
+                    ParkingSpace space = parkingSpaceService.getParkingSpaceById(parkingSpaceId);
+                    if (space != null) {
+                        parkingAddress = space.getParkingAddress();
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Error retrieving parking details for reservation: " + reservation.getReservationID(), e);
+            }
+
+            LocalDateTime startDateTime = LocalDateTime.of(
+                    reservation.getStartDate().toLocalDate(),
+                    reservation.getStartTime().toLocalTime()
+            );
+
+            LocalDateTime endDateTime = LocalDateTime.of(
+                    reservation.getEndDate().toLocalDate(),
+                    reservation.getEndTime().toLocalTime()
+            );
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("reservation", reservation);
+            result.put("vehicle", vehicle);
+            result.put("slotNumber", slotNumber);
+            result.put("parkingAddress", parkingAddress);
+            result.put("parkingId", parkingId != null ? parkingId : "Unknown");
+            result.put("startDateTime", startDateTime);
+            result.put("endDateTime", endDateTime);
+            result.put("status", reservation.getStatus());
+
+            return result;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting reservation details", e);
+            return null;
+        }
     }
 }

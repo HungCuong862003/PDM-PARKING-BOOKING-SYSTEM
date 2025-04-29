@@ -9,278 +9,301 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Repository class for handling card data access operations
+ * Repository class for handling database operations related to payment cards
  */
 public class CardRepository {
+    private static final Logger LOGGER = Logger.getLogger(CardRepository.class.getName());
 
     /**
-     * Gets all cards associated with a specific user
+     * Insert a new card into the database
+     *
+     * @param card The card to insert
+     * @return true if insertion was successful, false otherwise
+     */
+    public boolean insertCard(Card card) {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        boolean success = false;
+
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "INSERT INTO CARD (CardNumber, ValidTo, CardHolder, UserID) VALUES (?, ?, ?, ?)";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setString(1, card.getCardNumber());
+            preparedStatement.setDate(2, new java.sql.Date(card.getValidTo().getTime()));
+            preparedStatement.setString(3, card.getCardHolder());
+            preparedStatement.setInt(4, card.getUserID());
+
+            int rowsAffected = preparedStatement.executeUpdate();
+            success = rowsAffected > 0;
+
+            LOGGER.log(Level.INFO, "Inserted card: {0}, success: {1}", new Object[]{card.getCardNumber(), success});
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error inserting card: " + card.getCardNumber(), e);
+        } finally {
+            DatabaseConnection.closePreparedStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
+        }
+
+        return success;
+    }
+
+    /**
+     * Get all cards for a specific user
      *
      * @param userId The ID of the user
      * @return List of cards belonging to the user
      */
     public List<Card> getCardsByUserId(int userId) {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
         List<Card> cards = new ArrayList<>();
-        String sql = "SELECT * FROM CARD WHERE UserID = ?";
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "SELECT * FROM CARD WHERE UserID = ?";
+            preparedStatement = connection.prepareStatement(query);
             preparedStatement.setInt(1, userId);
+            resultSet = preparedStatement.executeQuery();
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    Card card = new Card(
-                            resultSet.getString("CardNumber"),
-                            resultSet.getString("ValidTo"),
-                            resultSet.getString("CardHolder"),
-                            resultSet.getInt("UserID")
-                    );
-                    cards.add(card);
-                }
+            while (resultSet.next()) {
+                Card card = mapResultSetToCard(resultSet);
+                cards.add(card);
             }
 
+            LOGGER.log(Level.INFO, "Retrieved {0} cards for user ID: {1}", new Object[]{cards.size(), userId});
         } catch (SQLException e) {
-            System.err.println("Error retrieving cards for user: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error retrieving cards for user ID: " + userId, e);
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closePreparedStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
 
         return cards;
     }
 
     /**
-     * Gets a specific card by its number
+     * Get a card by its number
      *
-     * @param cardNumber The unique card number
-     * @return Card object if found, null otherwise
+     * @param cardNumber The card number to search for
+     * @return The card with the given number, or null if not found
      */
     public Card getCardByNumber(String cardNumber) {
-        String sql = "SELECT * FROM CARD WHERE CardNumber = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        Card card = null;
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "SELECT * FROM CARD WHERE CardNumber = ?";
+            preparedStatement = connection.prepareStatement(query);
             preparedStatement.setString(1, cardNumber);
+            resultSet = preparedStatement.executeQuery();
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return new Card(
-                            resultSet.getString("CardNumber"),
-                            resultSet.getString("ValidTo"),
-                            resultSet.getString("CardHolder"),
-                            resultSet.getInt("UserID")
-                    );
-                }
+            if (resultSet.next()) {
+                card = mapResultSetToCard(resultSet);
+                LOGGER.log(Level.INFO, "Retrieved card: {0}", cardNumber);
+            } else {
+                LOGGER.log(Level.INFO, "No card found with number: {0}", cardNumber);
             }
-
         } catch (SQLException e) {
-            System.err.println("Error retrieving card: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error retrieving card: " + cardNumber, e);
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closePreparedStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
 
-        return null;
+        return card;
     }
 
     /**
-     * Inserts a new card into the database
+     * Update a card in the database
      *
-     * @param card The card to insert
-     * @return true if insertion successful, false otherwise
+     * @param card The card with updated information
+     * @return true if update was successful, false otherwise
      */
-    public boolean insertCard(Card card) {
-        String sql = "INSERT INTO CARD (CardNumber, ValidTo, CardHolder, UserID) VALUES (?, ?, ?, ?)";
+    public boolean updateCard(Card card) {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        boolean success = false;
 
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            // Check if card already exists
-            if (cardExists(card.getCardNumber())) {
-                return false;
-            }
-
-            try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-                preparedStatement.setString(1, card.getCardNumber());
-                preparedStatement.setString(2, card.getValidTo());
-                preparedStatement.setString(3, card.getCardHolder());
-                preparedStatement.setInt(4, card.getUserID());
-
-                int rowsAffected = preparedStatement.executeUpdate();
-                return rowsAffected > 0;
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error inserting card: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    /**
-     * Updates an existing card in the database
-     *
-     * @param cardNumber The card number to update
-     * @param card The updated card information
-     * @return true if update successful, false otherwise
-     */
-    public boolean updateCard(String cardNumber, Card card) {
-        String sql = "UPDATE CARD SET ValidTo = ?, CardHolder = ?, UserID = ? WHERE CardNumber = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setString(1, card.getValidTo());
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "UPDATE CARD SET ValidTo = ?, CardHolder = ? WHERE CardNumber = ?";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setDate(1, new java.sql.Date(card.getValidTo().getTime()));
             preparedStatement.setString(2, card.getCardHolder());
-            preparedStatement.setInt(3, card.getUserID());
-            preparedStatement.setString(4, cardNumber);
+            preparedStatement.setString(3, card.getCardNumber());
 
             int rowsAffected = preparedStatement.executeUpdate();
-            return rowsAffected > 0;
+            success = rowsAffected > 0;
 
+            LOGGER.log(Level.INFO, "Updated card: {0}, success: {1}", new Object[]{card.getCardNumber(), success});
         } catch (SQLException e) {
-            System.err.println("Error updating card: " + e.getMessage());
-            e.printStackTrace();
-            return false;
+            LOGGER.log(Level.SEVERE, "Error updating card: " + card.getCardNumber(), e);
+        } finally {
+            DatabaseConnection.closePreparedStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
+
+        return success;
     }
 
     /**
-     * Deletes a card from the database
+     * Delete a card from the database
      *
      * @param cardNumber The card number to delete
-     * @return true if deletion successful, false otherwise
+     * @return true if deletion was successful, false otherwise
      */
     public boolean deleteCard(String cardNumber) {
-        String sql = "DELETE FROM CARD WHERE CardNumber = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        boolean success = false;
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "DELETE FROM CARD WHERE CardNumber = ?";
+            preparedStatement = connection.prepareStatement(query);
             preparedStatement.setString(1, cardNumber);
 
             int rowsAffected = preparedStatement.executeUpdate();
-            return rowsAffected > 0;
+            success = rowsAffected > 0;
 
+            LOGGER.log(Level.INFO, "Deleted card: {0}, success: {1}", new Object[]{cardNumber, success});
         } catch (SQLException e) {
-            System.err.println("Error deleting card: " + e.getMessage());
-            e.printStackTrace();
-            return false;
+            LOGGER.log(Level.SEVERE, "Error deleting card: " + cardNumber, e);
+        } finally {
+            DatabaseConnection.closePreparedStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
+
+        return success;
     }
 
     /**
-     * Checks if a card with a specific number exists
+     * Check if a card exists in the database
      *
      * @param cardNumber The card number to check
      * @return true if the card exists, false otherwise
      */
     public boolean cardExists(String cardNumber) {
-        String sql = "SELECT COUNT(*) FROM CARD WHERE CardNumber = ?";
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        boolean exists = false;
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "SELECT COUNT(*) FROM CARD WHERE CardNumber = ?";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setString(1, cardNumber);
+            resultSet = preparedStatement.executeQuery();
 
+            if (resultSet.next()) {
+                exists = resultSet.getInt(1) > 0;
+            }
+
+            LOGGER.log(Level.FINE, "Card existence check: {0}, exists: {1}", new Object[]{cardNumber, exists});
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error checking if card exists: " + cardNumber, e);
+        } finally {
+            DatabaseConnection.closeResultSet(resultSet);
+            DatabaseConnection.closePreparedStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
+        }
+
+        return exists;
+    }
+
+    /**
+     * Map a result set row to a Card object
+     *
+     * @param resultSet The result set to map
+     * @return A Card object populated with data from the result set
+     * @throws SQLException If an error occurs while accessing the result set
+     */
+    private Card mapResultSetToCard(ResultSet resultSet) throws SQLException {
+        Card card = new Card();
+        card.setCardNumber(resultSet.getString("CardNumber"));
+        card.setValidTo(resultSet.getDate("ValidTo"));
+        card.setCardHolder(resultSet.getString("CardHolder"));
+        card.setUserID(resultSet.getInt("UserID"));
+        return card;
+    }
+
+    /**
+     * Remove a card from the database
+     *
+     * @param cardNumber The card number to remove
+     * @return true if the card was removed successfully, false otherwise
+     */
+    public boolean removeCard(String cardNumber) {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "DELETE FROM CARD WHERE CardNumber = ?";
+            preparedStatement = connection.prepareStatement(query);
             preparedStatement.setString(1, cardNumber);
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt(1) > 0;
-                }
+            int rowsAffected = preparedStatement.executeUpdate();
+            if (rowsAffected > 0) {
+                LOGGER.log(Level.INFO, "Card removed successfully: {0}", cardNumber);
+                return true;
+            } else {
+                LOGGER.log(Level.WARNING, "No card found with number: {0}", cardNumber);
+                return false;
             }
-
         } catch (SQLException e) {
-            System.err.println("Error checking if card exists: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error removing card: " + cardNumber, e);
+            return false;
+        } finally {
+            DatabaseConnection.closePreparedStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
-
-        return false;
     }
-
     /**
-     * Gets the number of cards owned by a user
+     * Add a new card to the database
      *
-     * @param userId The ID of the user
-     * @return The count of cards owned by the user
+     * @param card The card to add
+     * @return true if the card was added successfully, false otherwise
      */
-    public int getCardCountByUser(int userId) {
-        String sql = "SELECT COUNT(*) FROM CARD WHERE UserID = ?";
+    public boolean addCard(Card card) {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "INSERT INTO CARD (CardNumber, ValidTo, CardHolder, UserID) VALUES (?, ?, ?, ?)";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setString(1, card.getCardNumber());
+            preparedStatement.setDate(2, new java.sql.Date(card.getValidTo().getTime()));
+            preparedStatement.setString(3, card.getCardHolder());
+            preparedStatement.setInt(4, card.getUserID());
 
-            preparedStatement.setInt(1, userId);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt(1);
-                }
+            int rowsAffected = preparedStatement.executeUpdate();
+            if (rowsAffected > 0) {
+                LOGGER.log(Level.INFO, "Card added successfully: {0}", card.getCardNumber());
+                return true;
+            } else {
+                LOGGER.log(Level.WARNING, "No rows affected when adding card: {0}", card.getCardNumber());
+                return false;
             }
-
         } catch (SQLException e) {
-            System.err.println("Error getting card count: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error adding card: " + card.getCardNumber(), e);
+            return false;
+        } finally {
+            DatabaseConnection.closePreparedStatement(preparedStatement);
+            DatabaseConnection.closeConnection(connection);
         }
-
-        return 0;
-    }
-
-    /**
-     * Checks if a user is the owner of a specific card
-     *
-     * @param cardNumber The card number
-     * @param userId The ID of the user
-     * @return true if the user owns the card, false otherwise
-     */
-    public boolean isCardOwnedByUser(String cardNumber, int userId) {
-        String sql = "SELECT COUNT(*) FROM CARD WHERE CardNumber = ? AND UserID = ?";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
-            preparedStatement.setString(1, cardNumber);
-            preparedStatement.setInt(2, userId);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt(1) > 0;
-                }
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error checking card ownership: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    /**
-     * Gets all cards in the system (admin function)
-     *
-     * @return List of all cards
-     */
-    public List<Card> getAllCards() {
-        List<Card> cards = new ArrayList<>();
-        String sql = "SELECT * FROM CARD";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql);
-             ResultSet resultSet = preparedStatement.executeQuery()) {
-
-            while (resultSet.next()) {
-                Card card = new Card(
-                        resultSet.getString("CardNumber"),
-                        resultSet.getString("ValidTo"),
-                        resultSet.getString("CardHolder"),
-                        resultSet.getInt("UserID")
-                );
-                cards.add(card);
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Error retrieving all cards: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        return cards;
     }
 }

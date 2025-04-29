@@ -1,412 +1,428 @@
 package main.java.com.parkeasy.util;
 
+import java.sql.Date;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.Duration;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
-import main.java.com.parkeasy.util.Constants;
+import java.util.Calendar;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Utility class for handling date and time operations in the ParkEasy application.
- * Provides methods for formatting, parsing, and calculating durations between dates and times.
+ * Utility class for date and time operations
  */
-public final class DateTimeUtil {
+public class DateTimeUtil {
+    private static final Logger LOGGER = Logger.getLogger(DateTimeUtil.class.getName());
 
-    // Private constructor to prevent instantiation
-    private DateTimeUtil() {
-        throw new AssertionError("DateTimeUtil class should not be instantiated");
-    }
-
-    // Common date and time format patterns
-    public static final String DATE_FORMAT = "yyyy-MM-dd";
-    public static final String TIME_FORMAT = "HH:mm";
-    public static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
-    public static final String DATE_TIME_SECONDS_FORMAT = "yyyy-MM-dd HH:mm:ss";
-    public static final String DISPLAY_DATE_FORMAT = "MMM dd, yyyy";
-    public static final String DISPLAY_TIME_FORMAT = "h:mm a";
-    public static final String DISPLAY_DATE_TIME_FORMAT = "MMM dd, yyyy h:mm a";
-
-    // Formatters
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(DATE_FORMAT);
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern(TIME_FORMAT);
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(DATE_TIME_FORMAT);
-    private static final DateTimeFormatter DATE_TIME_SECONDS_FORMATTER = DateTimeFormatter.ofPattern(DATE_TIME_SECONDS_FORMAT);
-    private static final DateTimeFormatter DISPLAY_DATE_FORMATTER = DateTimeFormatter.ofPattern(DISPLAY_DATE_FORMAT);
-    private static final DateTimeFormatter DISPLAY_TIME_FORMATTER = DateTimeFormatter.ofPattern(DISPLAY_TIME_FORMAT);
-    private static final DateTimeFormatter DISPLAY_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(DISPLAY_DATE_TIME_FORMAT);
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+    private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("HH:mm:ss");
+    private static final SimpleDateFormat DATETIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     /**
-     * Gets the current date.
-     *
-     * @return Current date as LocalDate
+     * Convert java.sql.Date to java.time.LocalDate
      */
-    public static LocalDate getCurrentDate() {
-        return LocalDate.now();
+    public static LocalDate toLocalDate(Date date) {
+        return date != null ? date.toLocalDate() : null;
     }
 
     /**
-     * Gets the current time.
-     *
-     * @return Current time as LocalTime
+     * Convert java.sql.Time to java.time.LocalTime
      */
-    public static LocalTime getCurrentTime() {
-        return LocalTime.now();
+    public static LocalTime toLocalTime(Time time) {
+        return time != null ? time.toLocalTime() : null;
     }
 
     /**
-     * Gets the current date and time.
-     *
-     * @return Current date and time as LocalDateTime
+     * Convert java.sql.Timestamp to java.time.LocalDateTime
      */
-    public static LocalDateTime getCurrentDateTime() {
-        return LocalDateTime.now();
+    public static LocalDateTime toLocalDateTime(Timestamp timestamp) {
+        return timestamp != null ? timestamp.toLocalDateTime() : null;
     }
 
     /**
-     * Formats a LocalDate to string using the default date format.
-     *
-     * @param date The LocalDate to format
-     * @return Formatted date string
+     * Convert java.time.LocalDate to java.sql.Date
      */
-    public static String formatDate(LocalDate date) {
-        return date != null ? date.format(DATE_FORMATTER) : "";
+    public static Date toSqlDate(LocalDate localDate) {
+        return localDate != null ? Date.valueOf(localDate) : null;
     }
 
     /**
-     * Formats a LocalTime to string using the default time format.
-     *
-     * @param time The LocalTime to format
-     * @return Formatted time string
+     * Convert java.time.LocalTime to java.sql.Time
      */
-    public static String formatTime(LocalTime time) {
-        return time != null ? time.format(TIME_FORMATTER) : "";
+    public static Time toSqlTime(LocalTime localTime) {
+        return localTime != null ? Time.valueOf(localTime) : null;
     }
 
     /**
-     * Formats a LocalDateTime to string using the default date-time format.
-     *
-     * @param dateTime The LocalDateTime to format
-     * @return Formatted date-time string
+     * Convert java.time.LocalDateTime to java.sql.Timestamp
      */
-    public static String formatDateTime(LocalDateTime dateTime) {
-        return dateTime != null ? dateTime.format(DATE_TIME_FORMATTER) : "";
+    public static Timestamp toSqlTimestamp(LocalDateTime localDateTime) {
+        return localDateTime != null ? Timestamp.valueOf(localDateTime) : null;
     }
 
     /**
-     * Formats a LocalDate to display format for UI.
-     *
-     * @param date The LocalDate to format
-     * @return Formatted date string for display
+     * Get current date as java.sql.Date
      */
-    public static String formatDateForDisplay(LocalDate date) {
-        return date != null ? date.format(DISPLAY_DATE_FORMATTER) : "";
+    public static Date getCurrentSqlDate() {
+        return new Date(System.currentTimeMillis());
     }
 
     /**
-     * Formats a LocalTime to display format for UI.
-     *
-     * @param time The LocalTime to format
-     * @return Formatted time string for display
+     * Get current time as java.sql.Time
      */
-    public static String formatTimeForDisplay(LocalTime time) {
-        return time != null ? time.format(DISPLAY_TIME_FORMATTER) : "";
+    public static Time getCurrentSqlTime() {
+        return new Time(System.currentTimeMillis());
     }
 
     /**
-     * Formats a LocalDateTime to display format for UI.
-     *
-     * @param dateTime The LocalDateTime to format
-     * @return Formatted date-time string for display
+     * Get current timestamp as java.sql.Timestamp
      */
-    public static String formatDateTimeForDisplay(LocalDateTime dateTime) {
-        return dateTime != null ? dateTime.format(DISPLAY_DATE_TIME_FORMATTER) : "";
+    public static Timestamp getCurrentSqlTimestamp() {
+        return new Timestamp(System.currentTimeMillis());
     }
 
     /**
-     * Parses a date string to LocalDate.
-     *
-     * @param dateStr The date string to parse
-     * @return Parsed LocalDate or null if invalid format
+     * Format date as string
      */
-    public static LocalDate parseDate(String dateStr) {
+    public static String formatDate(Date date) {
+        return date != null ? DATE_FORMAT.format(date) : "";
+    }
+
+    /**
+     * Format time as string
+     */
+    public static String formatTime(Time time) {
+        return time != null ? TIME_FORMAT.format(time) : "";
+    }
+
+    /**
+     * Format timestamp as string
+     */
+    public static String formatTimestamp(Timestamp timestamp) {
+        return timestamp != null ? DATETIME_FORMAT.format(timestamp) : "";
+    }
+
+    /**
+     * Parse string to date
+     */
+    public static Date parseDate(String dateStr) {
         try {
-            return dateStr != null && !dateStr.isEmpty() ? LocalDate.parse(dateStr, DATE_FORMATTER) : null;
-        } catch (DateTimeParseException e) {
+            if (dateStr == null || dateStr.isEmpty()) {
+                return null;
+            }
+            java.util.Date parsed = DATE_FORMAT.parse(dateStr);
+            return new Date(parsed.getTime());
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Error parsing date: " + dateStr, e);
             return null;
         }
     }
 
     /**
-     * Parses a time string to LocalTime.
-     *
-     * @param timeStr The time string to parse
-     * @return Parsed LocalTime or null if invalid format
+     * Parse string to time
      */
-    public static LocalTime parseTime(String timeStr) {
+    public static Time parseTime(String timeStr) {
         try {
-            return timeStr != null && !timeStr.isEmpty() ? LocalTime.parse(timeStr, TIME_FORMATTER) : null;
-        } catch (DateTimeParseException e) {
+            if (timeStr == null || timeStr.isEmpty()) {
+                return null;
+            }
+            java.util.Date parsed = TIME_FORMAT.parse(timeStr);
+            return new Time(parsed.getTime());
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Error parsing time: " + timeStr, e);
             return null;
         }
     }
 
     /**
-     * Parses a date-time string to LocalDateTime.
-     *
-     * @param dateTimeStr The date-time string to parse
-     * @return Parsed LocalDateTime or null if invalid format
+     * Parse string to timestamp
      */
-    public static LocalDateTime parseDateTime(String dateTimeStr) {
+    public static Timestamp parseTimestamp(String timestampStr) {
         try {
-            return dateTimeStr != null && !dateTimeStr.isEmpty() ?
-                    LocalDateTime.parse(dateTimeStr, DATE_TIME_FORMATTER) : null;
-        } catch (DateTimeParseException e) {
+            if (timestampStr == null || timestampStr.isEmpty()) {
+                return null;
+            }
+            java.util.Date parsed = DATETIME_FORMAT.parse(timestampStr);
+            return new Timestamp(parsed.getTime());
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Error parsing timestamp: " + timestampStr, e);
             return null;
         }
     }
 
     /**
-     * Calculates the duration between two dates in days.
-     *
-     * @param startDate Start date
-     * @param endDate End date
-     * @return Duration in days
+     * Calculate time difference in minutes between two timestamps
      */
-    public static long calculateDurationInDays(LocalDate startDate, LocalDate endDate) {
-        return ChronoUnit.DAYS.between(startDate, endDate);
+    public static long getMinutesBetween(Timestamp start, Timestamp end) {
+        if (start == null || end == null) {
+            return 0;
+        }
+        long diffMillis = end.getTime() - start.getTime();
+        return TimeUnit.MILLISECONDS.toMinutes(diffMillis);
     }
 
     /**
-     * Calculates the duration between two times in minutes.
-     *
-     * @param startTime Start time
-     * @param endTime End time
-     * @return Duration in minutes
+     * Calculate time difference in minutes between date/time combinations
      */
-    public static long calculateDurationInMinutes(LocalTime startTime, LocalTime endTime) {
-        return ChronoUnit.MINUTES.between(startTime, endTime);
-    }
-
-    /**
-     * Calculates the duration between start and end date-times in hours.
-     *
-     * @param startDateTime Start date-time
-     * @param endDateTime End date-time
-     * @return Duration in hours
-     */
-    public static long calculateDurationInHours(LocalDateTime startDateTime, LocalDateTime endDateTime) {
-        return ChronoUnit.HOURS.between(startDateTime, endDateTime);
-    }
-
-    /**
-     * Calculates the duration between start and end date-times in minutes.
-     *
-     * @param startDateTime Start date-time
-     * @param endDateTime End date-time
-     * @return Duration in minutes
-     */
-    public static long calculateDurationInMinutes(LocalDateTime startDateTime, LocalDateTime endDateTime) {
-        return ChronoUnit.MINUTES.between(startDateTime, endDateTime);
-    }
-
-    /**
-     * Calculates the duration between start and end dates and times in minutes.
-     *
-     * @param startDate Start date as string (yyyy-MM-dd)
-     * @param startTime Start time as string (HH:mm)
-     * @param endDate End date as string (yyyy-MM-dd)
-     * @param endTime End time as string (HH:mm)
-     * @return Duration in minutes
-     */
-    public static long calculateDurationInMinutes(String startDate, String startTime, String endDate, String endTime) {
-        LocalDate parsedStartDate = parseDate(startDate);
-        LocalTime parsedStartTime = parseTime(startTime);
-        LocalDate parsedEndDate = parseDate(endDate);
-        LocalTime parsedEndTime = parseTime(endTime);
-
-        if (parsedStartDate == null || parsedStartTime == null || parsedEndDate == null || parsedEndTime == null) {
-            throw new IllegalArgumentException("Invalid date or time format");
+    public static long getMinutesBetween(Date startDate, Time startTime, Date endDate, Time endTime) {
+        if (startDate == null || startTime == null || endDate == null || endTime == null) {
+            return 0;
         }
 
-        LocalDateTime startDateTime = LocalDateTime.of(parsedStartDate, parsedStartTime);
-        LocalDateTime endDateTime = LocalDateTime.of(parsedEndDate, parsedEndTime);
+        Calendar startCal = Calendar.getInstance();
+        startCal.setTime(startDate);
+        Calendar timeCalStart = Calendar.getInstance();
+        timeCalStart.setTime(startTime);
+        startCal.set(Calendar.HOUR_OF_DAY, timeCalStart.get(Calendar.HOUR_OF_DAY));
+        startCal.set(Calendar.MINUTE, timeCalStart.get(Calendar.MINUTE));
+        startCal.set(Calendar.SECOND, timeCalStart.get(Calendar.SECOND));
 
-        return calculateDurationInMinutes(startDateTime, endDateTime);
+        Calendar endCal = Calendar.getInstance();
+        endCal.setTime(endDate);
+        Calendar timeCalEnd = Calendar.getInstance();
+        timeCalEnd.setTime(endTime);
+        endCal.set(Calendar.HOUR_OF_DAY, timeCalEnd.get(Calendar.HOUR_OF_DAY));
+        endCal.set(Calendar.MINUTE, timeCalEnd.get(Calendar.MINUTE));
+        endCal.set(Calendar.SECOND, timeCalEnd.get(Calendar.SECOND));
+
+        long diffMillis = endCal.getTimeInMillis() - startCal.getTimeInMillis();
+        return TimeUnit.MILLISECONDS.toMinutes(diffMillis);
     }
 
     /**
-     * Formats a duration in minutes to a human-readable string (e.g., "2 hours 30 minutes").
-     *
-     * @param minutes Duration in minutes
-     * @return Human-readable duration string
+     * Format a duration in minutes to a readable string
      */
     public static String formatDuration(long minutes) {
+        if (minutes < 0) {
+            return "Invalid duration";
+        }
+
         long hours = minutes / 60;
         long remainingMinutes = minutes % 60;
 
         if (hours > 0) {
-            return hours + (hours == 1 ? " hour " : " hours ") +
-                    (remainingMinutes > 0 ? remainingMinutes + (remainingMinutes == 1 ? " minute" : " minutes") : "");
+            return String.format("%d hour%s %d minute%s",
+                    hours, hours != 1 ? "s" : "",
+                    remainingMinutes, remainingMinutes != 1 ? "s" : "");
         } else {
-            return remainingMinutes + (remainingMinutes == 1 ? " minute" : " minutes");
+            return String.format("%d minute%s", remainingMinutes, remainingMinutes != 1 ? "s" : "");
         }
     }
 
     /**
-     * Checks if the given time is within the specified operating hours.
-     *
-     * @param time The time to check
-     * @param openingTime Opening time of the parking plot
-     * @param closingTime Closing time of the parking plot
-     * @return true if the time is within operating hours, false otherwise
+     * Check if a date/time is within a specified number of minutes from now
      */
-    public static boolean isWithinOperatingHours(LocalTime time, LocalTime openingTime, LocalTime closingTime) {
-        // Handle the case where operating hours span across midnight
-        if (closingTime.isBefore(openingTime)) {
-            return !time.isAfter(closingTime) || !time.isBefore(openingTime);
-        } else {
-            return !time.isBefore(openingTime) && !time.isAfter(closingTime);
+    public static boolean isWithinMinutes(Date date, Time time, int minutes) {
+        try {
+            if (date == null || time == null || minutes <= 0) {
+                return false;
+            }
+
+            // Get current date and time
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+
+            // Create a timestamp from the target date and time
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(date);
+            Calendar timeCal = Calendar.getInstance();
+            timeCal.setTime(time);
+            cal.set(Calendar.HOUR_OF_DAY, timeCal.get(Calendar.HOUR_OF_DAY));
+            cal.set(Calendar.MINUTE, timeCal.get(Calendar.MINUTE));
+            cal.set(Calendar.SECOND, timeCal.get(Calendar.SECOND));
+
+            Timestamp target = new Timestamp(cal.getTimeInMillis());
+
+            // Calculate time difference in minutes
+            long diffMinutes = getMinutesBetween(now, target);
+
+            // Return true if the difference is within the specified minutes
+            return Math.abs(diffMinutes) <= minutes;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error checking if within minutes", e);
+            return false;
         }
     }
 
     /**
-     * Checks if two time ranges overlap.
-     *
-     * @param start1 Start of first time range
-     * @param end1 End of first time range
-     * @param start2 Start of second time range
-     * @param end2 End of second time range
-     * @return true if the time ranges overlap, false otherwise
+     * Get time remaining until a specific date/time as a formatted string
      */
-    public static boolean isTimeRangeOverlap(LocalTime start1, LocalTime end1, LocalTime start2, LocalTime end2) {
-        return start1.isBefore(end2) && end1.isAfter(start2);
-    }
+    public static String getTimeRemainingUntil(Date date, Time time) {
+        try {
+            if (date == null || time == null) {
+                return "Unknown";
+            }
 
-    /**
-     * Checks if two date-time ranges overlap.
-     *
-     * @param start1 Start of first date-time range
-     * @param end1 End of first date-time range
-     * @param start2 Start of second date-time range
-     * @param end2 End of second date-time range
-     * @return true if the date-time ranges overlap, false otherwise
-     */
-    public static boolean isDateTimeRangeOverlap(LocalDateTime start1, LocalDateTime end1,
-                                                 LocalDateTime start2, LocalDateTime end2) {
-        return start1.isBefore(end2) && end1.isAfter(start2);
-    }
+            // Get current date and time
+            Timestamp now = new Timestamp(System.currentTimeMillis());
 
-    /**
-     * Adds days to a given date.
-     *
-     * @param date The original date
-     * @param days Number of days to add
-     * @return New date with days added
-     */
-    public static LocalDate addDays(LocalDate date, long days) {
-        return date.plusDays(days);
-    }
+            // Create a timestamp from the target date and time
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(date);
+            Calendar timeCal = Calendar.getInstance();
+            timeCal.setTime(time);
+            cal.set(Calendar.HOUR_OF_DAY, timeCal.get(Calendar.HOUR_OF_DAY));
+            cal.set(Calendar.MINUTE, timeCal.get(Calendar.MINUTE));
+            cal.set(Calendar.SECOND, timeCal.get(Calendar.SECOND));
 
-    /**
-     * Adds hours to a given time.
-     *
-     * @param time The original time
-     * @param hours Number of hours to add
-     * @return New time with hours added
-     */
-    public static LocalTime addHours(LocalTime time, long hours) {
-        return time.plusHours(hours);
-    }
+            Timestamp target = new Timestamp(cal.getTimeInMillis());
 
-    /**
-     * Adds minutes to a given time.
-     *
-     * @param time The original time
-     * @param minutes Number of minutes to add
-     * @return New time with minutes added
-     */
-    public static LocalTime addMinutes(LocalTime time, long minutes) {
-        return time.plusMinutes(minutes);
-    }
+            // If the target time is in the past, return "Expired"
+            if (target.before(now)) {
+                return "Expired";
+            }
 
-    /**
-     * Converts the day of week value (1-7) from the database to the corresponding
-     * day name (Sunday, Monday, etc.).
-     *
-     * @param dayOfWeek Day of week value (1 for Sunday, 7 for Saturday)
-     * @return Day name as a string
-     */
-    public static String getDayNameFromValue(int dayOfWeek) {
-        switch (dayOfWeek) {
-            case Constants.SUNDAY: return "Sunday";
-            case Constants.MONDAY: return "Monday";
-            case Constants.TUESDAY: return "Tuesday";
-            case Constants.WEDNESDAY: return "Wednesday";
-            case Constants.THURSDAY: return "Thursday";
-            case Constants.FRIDAY: return "Friday";
-            case Constants.SATURDAY: return "Saturday";
-            default: return "Unknown";
+            // Calculate time difference
+            long diffMillis = target.getTime() - now.getTime();
+            long days = TimeUnit.MILLISECONDS.toDays(diffMillis);
+            diffMillis -= TimeUnit.DAYS.toMillis(days);
+            long hours = TimeUnit.MILLISECONDS.toHours(diffMillis);
+            diffMillis -= TimeUnit.HOURS.toMillis(hours);
+            long minutes = TimeUnit.MILLISECONDS.toMinutes(diffMillis);
+
+            // Format the time remaining
+            StringBuilder sb = new StringBuilder();
+            if (days > 0) {
+                sb.append(days).append(" day").append(days != 1 ? "s" : "").append(" ");
+            }
+            if (hours > 0 || days > 0) {
+                sb.append(hours).append(" hour").append(hours != 1 ? "s" : "").append(" ");
+            }
+            sb.append(minutes).append(" minute").append(minutes != 1 ? "s" : "");
+
+            return sb.toString();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error calculating time remaining", e);
+            return "Unknown";
         }
     }
 
     /**
-     * Gets the day of week value (1-7) for a given date.
-     *
-     * @param date The date to get day of week for
-     * @return Day of week value (1 for Sunday, 7 for Saturday)
+     * Get elapsed time since a specific date/time as a formatted string
      */
-    public static int getDayOfWeekValue(LocalDate date) {
-        int javaDayOfWeek = date.getDayOfWeek().getValue(); // 1 (Monday) to 7 (Sunday)
-        // Convert Java's day of week (1=Monday, 7=Sunday) to our system (1=Sunday, 7=Saturday)
-        return javaDayOfWeek == 7 ? 1 : javaDayOfWeek + 1;
+    public static String getElapsedTimeSince(Date date, Time time) {
+        try {
+            if (date == null || time == null) {
+                return "Unknown";
+            }
+
+            // Get current date and time
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+
+            // Create a timestamp from the start date and time
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(date);
+            Calendar timeCal = Calendar.getInstance();
+            timeCal.setTime(time);
+            cal.set(Calendar.HOUR_OF_DAY, timeCal.get(Calendar.HOUR_OF_DAY));
+            cal.set(Calendar.MINUTE, timeCal.get(Calendar.MINUTE));
+            cal.set(Calendar.SECOND, timeCal.get(Calendar.SECOND));
+
+            Timestamp start = new Timestamp(cal.getTimeInMillis());
+
+            // If the start time is in the future, return "Not started yet"
+            if (start.after(now)) {
+                return "Not started yet";
+            }
+
+            // Calculate time difference
+            long diffMillis = now.getTime() - start.getTime();
+            long days = TimeUnit.MILLISECONDS.toDays(diffMillis);
+            diffMillis -= TimeUnit.DAYS.toMillis(days);
+            long hours = TimeUnit.MILLISECONDS.toHours(diffMillis);
+            diffMillis -= TimeUnit.HOURS.toMillis(hours);
+            long minutes = TimeUnit.MILLISECONDS.toMinutes(diffMillis);
+
+            // Format the elapsed time
+            StringBuilder sb = new StringBuilder();
+            if (days > 0) {
+                sb.append(days).append(" day").append(days != 1 ? "s" : "").append(" ");
+            }
+            if (hours > 0 || days > 0) {
+                sb.append(hours).append(" hour").append(hours != 1 ? "s" : "").append(" ");
+            }
+            sb.append(minutes).append(" minute").append(minutes != 1 ? "s" : "");
+
+            return sb.toString();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error calculating elapsed time", e);
+            return "Unknown";
+        }
     }
 
     /**
-     * Checks if a date is in the past.
-     *
-     * @param date The date to check
-     * @return true if the date is in the past, false otherwise
+     * Add minutes to a date and time
      */
-    public static boolean isDateInPast(LocalDate date) {
-        return date.isBefore(LocalDate.now());
+    public static Timestamp addMinutes(Date date, Time time, int minutes) {
+        try {
+            if (date == null || time == null) {
+                return null;
+            }
+
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(date);
+            Calendar timeCal = Calendar.getInstance();
+            timeCal.setTime(time);
+            cal.set(Calendar.HOUR_OF_DAY, timeCal.get(Calendar.HOUR_OF_DAY));
+            cal.set(Calendar.MINUTE, timeCal.get(Calendar.MINUTE));
+            cal.set(Calendar.SECOND, timeCal.get(Calendar.SECOND));
+
+            cal.add(Calendar.MINUTE, minutes);
+            return new Timestamp(cal.getTimeInMillis());
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error adding minutes to date/time", e);
+            return null;
+        }
     }
 
     /**
-     * Checks if a time is in the past on the current date.
-     *
-     * @param time The time to check
-     * @return true if the time is in the past today, false otherwise
+     * Check if a time period overlaps with another time period
      */
-    public static boolean isTimeInPastToday(LocalTime time) {
-        return time.isBefore(LocalTime.now());
-    }
+    public static boolean isOverlapping(Date start1, Time time1, Date end1, Time time1End,
+                                        Date start2, Time time2, Date end2, Time time2End) {
+        try {
+            Calendar startCal1 = Calendar.getInstance();
+            startCal1.setTime(start1);
+            Calendar timeCal1 = Calendar.getInstance();
+            timeCal1.setTime(time1);
+            startCal1.set(Calendar.HOUR_OF_DAY, timeCal1.get(Calendar.HOUR_OF_DAY));
+            startCal1.set(Calendar.MINUTE, timeCal1.get(Calendar.MINUTE));
+            startCal1.set(Calendar.SECOND, timeCal1.get(Calendar.SECOND));
 
-    /**
-     * Checks if a date-time is in the past.
-     *
-     * @param dateTime The date-time to check
-     * @return true if the date-time is in the past, false otherwise
-     */
-    public static boolean isDateTimeInPast(LocalDateTime dateTime) {
-        return dateTime.isBefore(LocalDateTime.now());
-    }
+            Calendar endCal1 = Calendar.getInstance();
+            endCal1.setTime(end1);
+            Calendar timeCal1End = Calendar.getInstance();
+            timeCal1End.setTime(time1End);
+            endCal1.set(Calendar.HOUR_OF_DAY, timeCal1End.get(Calendar.HOUR_OF_DAY));
+            endCal1.set(Calendar.MINUTE, timeCal1End.get(Calendar.MINUTE));
+            endCal1.set(Calendar.SECOND, timeCal1End.get(Calendar.SECOND));
 
-    /**
-     * Calculates the total cost for parking based on duration and hourly rate.
-     *
-     * @param startDateTime Start date-time of parking
-     * @param endDateTime End date-time of parking
-     * @param hourlyRate Hourly rate for parking
-     * @return Total cost for the parking duration
-     */
-    public static double calculateParkingCost(LocalDateTime startDateTime, LocalDateTime endDateTime, double hourlyRate) {
-        long minutes = calculateDurationInMinutes(startDateTime, endDateTime);
-        double hours = minutes / 60.0;
-        // Round up to the nearest hour
-        hours = Math.ceil(hours);
-        return hours * hourlyRate;
+            Calendar startCal2 = Calendar.getInstance();
+            startCal2.setTime(start2);
+            Calendar timeCal2 = Calendar.getInstance();
+            timeCal2.setTime(time2);
+            startCal2.set(Calendar.HOUR_OF_DAY, timeCal2.get(Calendar.HOUR_OF_DAY));
+            startCal2.set(Calendar.MINUTE, timeCal2.get(Calendar.MINUTE));
+            startCal2.set(Calendar.SECOND, timeCal2.get(Calendar.SECOND));
+
+            Calendar endCal2 = Calendar.getInstance();
+            endCal2.setTime(end2);
+            Calendar timeCal2End = Calendar.getInstance();
+            timeCal2End.setTime(time2End);
+            endCal2.set(Calendar.HOUR_OF_DAY, timeCal2End.get(Calendar.HOUR_OF_DAY));
+            endCal2.set(Calendar.MINUTE, timeCal2End.get(Calendar.MINUTE));
+            endCal2.set(Calendar.SECOND, timeCal2End.get(Calendar.SECOND));
+
+            // Check for overlap
+            return !(endCal1.before(startCal2) || startCal1.after(endCal2));
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error checking for time period overlap", e);
+            return false;
+        }
     }
 }

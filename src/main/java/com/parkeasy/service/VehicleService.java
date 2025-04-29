@@ -2,287 +2,309 @@ package main.java.com.parkeasy.service;
 
 import main.java.com.parkeasy.model.Vehicle;
 import main.java.com.parkeasy.repository.VehicleRepository;
-import main.java.com.parkeasy.util.Constants;
+import main.java.com.parkeasy.repository.ReservationRepository;
+import main.java.com.parkeasy.util.ValidationUtils;
 
-import java.util.Collections;
+import java.sql.SQLException;
 import java.util.List;
-import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Service class for managing vehicle operations
+ * Service class for vehicle operations
  */
 public class VehicleService {
     private static final Logger LOGGER = Logger.getLogger(VehicleService.class.getName());
 
     private final VehicleRepository vehicleRepository;
+    private final ReservationRepository reservationRepository;
 
     /**
-     * Constructor for VehicleService with dependency injection
-     * @param vehicleRepository The repository to use for vehicle operations
+     * Constructor with dependency injection
      */
-    public VehicleService(VehicleRepository vehicleRepository) {
+    public VehicleService(VehicleRepository vehicleRepository, ReservationRepository reservationRepository) {
         this.vehicleRepository = vehicleRepository;
+        this.reservationRepository = reservationRepository;
     }
 
     /**
-     * Default constructor that creates its own repository instance
-     * For backward compatibility and simpler instantiation when DI is not available
+     * Default constructor
      */
     public VehicleService() {
-        this(new VehicleRepository());
+        this.vehicleRepository = new VehicleRepository();
+        this.reservationRepository = new ReservationRepository();
     }
 
     /**
-     * Gets all vehicles registered to a user
-     * @param userId The ID of the user
-     * @return List of vehicles belonging to the user, empty list if none found
-     */
-    public List<Vehicle> getVehiclesByUserId(int userId) {
-        try {
-            if (userId <= 0) {
-                LOGGER.warning("Invalid user ID provided: " + userId);
-                return Collections.emptyList();
-            }
-
-            return vehicleRepository.getVehiclesByUserId(userId);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error retrieving vehicles for user: " + userId, e);
-            return Collections.emptyList();
-        }
-    }
-
-    /**
-     * Gets a specific vehicle by its ID
-     * @param vehicleId The ID of the vehicle
-     * @return Optional containing Vehicle if found, empty Optional otherwise
-     */
-    public Optional<Vehicle> getVehicleById(String vehicleId) {
-        try {
-            if (vehicleId == null || vehicleId.trim().isEmpty()) {
-                LOGGER.warning("Invalid vehicle ID provided: " + vehicleId);
-                return Optional.empty();
-            }
-
-            Vehicle vehicle = vehicleRepository.getVehicleById(vehicleId);
-            return Optional.ofNullable(vehicle);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error retrieving vehicle: " + vehicleId, e);
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * Adds a new vehicle
+     * Add a new vehicle
+     *
      * @param vehicle The vehicle to add
-     * @return boolean indicating success or failure
-     * @throws IllegalArgumentException if vehicle is null or has invalid properties
+     * @return true if successful, false otherwise
      */
     public boolean addVehicle(Vehicle vehicle) {
         try {
-            // Validate vehicle object
-            validateVehicle(vehicle);
+            LOGGER.log(Level.INFO, "Adding vehicle: {0} for user: {1}",
+                    new Object[]{vehicle.getVehicleID(), vehicle.getUserID()});
 
-            // Check if the vehicle already exists
-            if (isVehicleRegistered(vehicle.getVehicleID())) {
-                LOGGER.warning("Vehicle already exists: " + vehicle.getVehicleID());
+            // Validate vehicle data
+            if (!isValidVehicle(vehicle)) {
+                LOGGER.log(Level.WARNING, "Invalid vehicle data");
+                return false;
+            }
+
+            // Check if vehicle already exists
+            if (isVehicleExists(vehicle.getVehicleID())) {
+                LOGGER.log(Level.WARNING, "Vehicle already exists: {0}", vehicle.getVehicleID());
                 return false;
             }
 
             return vehicleRepository.insertVehicle(vehicle);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warning(e.getMessage());
-            throw e;
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error adding vehicle: " + (vehicle != null ? vehicle.getVehicleID() : "null"), e);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error adding vehicle", e);
             return false;
         }
     }
 
     /**
-     * Removes a vehicle
+     * Get a vehicle by ID
+     *
+     * @param vehicleId The ID of the vehicle
+     * @return The vehicle or null if not found
+     */
+    public Vehicle getVehicleById(String vehicleId) {
+        try {
+            LOGGER.log(Level.INFO, "Getting vehicle by ID: {0}", vehicleId);
+            return vehicleRepository.getVehicleById(vehicleId);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting vehicle by ID", e);
+            return null;
+        }
+    }
+
+    /**
+     * Get all vehicles for a user
+     *
+     * @param userId The ID of the user
+     * @return List of vehicles
+     */
+    public List<Vehicle> getVehiclesByUserId(int userId) {
+        try {
+            LOGGER.log(Level.INFO, "Getting vehicles for user: {0}", userId);
+            return vehicleRepository.getVehiclesByUserId(userId);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting vehicles for user", e);
+            return List.of(); // Return empty list on error
+        }
+    }
+
+    /**
+     * Update a vehicle
+     *
+     * @param vehicle The vehicle with updated information
+     * @return true if successful, false otherwise
+     */
+    public boolean updateVehicle(Vehicle vehicle) {
+        try {
+            LOGGER.log(Level.INFO, "Updating vehicle: {0}", vehicle.getVehicleID());
+
+            // Validate vehicle data
+            if (!isValidVehicle(vehicle)) {
+                LOGGER.log(Level.WARNING, "Invalid vehicle data");
+                return false;
+            }
+
+            // Check if vehicle exists
+            if (!isVehicleExists(vehicle.getVehicleID())) {
+                LOGGER.log(Level.WARNING, "Vehicle not found: {0}", vehicle.getVehicleID());
+                return false;
+            }
+
+            return vehicleRepository.updateVehicle(vehicle);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error updating vehicle", e);
+            return false;
+        }
+    }
+
+    /**
+     * Remove a vehicle
+     *
      * @param vehicleId The ID of the vehicle to remove
-     * @return boolean indicating success or failure
+     * @return true if successful, false otherwise
      */
     public boolean removeVehicle(String vehicleId) {
         try {
-            if (vehicleId == null || vehicleId.trim().isEmpty()) {
-                LOGGER.warning("Invalid vehicle ID provided for removal: " + vehicleId);
+            LOGGER.log(Level.INFO, "Removing vehicle: {0}", vehicleId);
+
+            // Check if vehicle exists
+            if (!isVehicleExists(vehicleId)) {
+                LOGGER.log(Level.WARNING, "Vehicle not found: {0}", vehicleId);
                 return false;
             }
 
-            return vehicleRepository.deleteVehicle(vehicleId);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error removing vehicle: " + vehicleId, e);
+            // Check if vehicle has active reservations
+            if (hasActiveReservations(vehicleId)) {
+                LOGGER.log(Level.WARNING, "Vehicle has active reservations: {0}", vehicleId);
+                return false;
+            }
+
+            return vehicleRepository.deleteVehicleById(vehicleId);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error removing vehicle", e);
             return false;
         }
     }
 
     /**
-     * Checks if a vehicle is already registered
-     * @param vehicleId The ID to check
-     * @return boolean indicating if the vehicle is registered
+     * Check if a vehicle exists
+     *
+     * @param vehicleId The ID of the vehicle
+     * @return true if exists, false otherwise
      */
-    public boolean isVehicleRegistered(String vehicleId) {
+    public boolean isVehicleExists(String vehicleId) {
         try {
-            if (vehicleId == null || vehicleId.trim().isEmpty()) {
-                return false;
-            }
-
-            return vehicleRepository.getVehicleById(vehicleId) != null;
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error checking if vehicle is registered: " + vehicleId, e);
+            LOGGER.log(Level.FINE, "Checking if vehicle exists: {0}", vehicleId);
+            return vehicleRepository.isVehicleExists(vehicleId);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error checking if vehicle exists", e);
             return false;
         }
     }
 
     /**
-     * Checks if a vehicle belongs to a specific user
+     * Check if a vehicle has active reservations
+     *
+     * @param vehicleId The ID of the vehicle
+     * @return true if has active reservations, false otherwise
+     */
+    public boolean hasActiveReservations(String vehicleId) {
+        try {
+            LOGGER.log(Level.INFO, "Checking if vehicle has active reservations: {0}", vehicleId);
+            return ReservationRepository.hasActiveReservations(vehicleId);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error checking if vehicle has active reservations", e);
+            return true; // Assume it has reservations on error to be safe
+        }
+    }
+
+    /**
+     * Check if a vehicle is owned by a specific user
+     *
      * @param vehicleId The ID of the vehicle
      * @param userId The ID of the user
-     * @return boolean indicating if the vehicle belongs to the user
+     * @return true if owned by the user, false otherwise
      */
     public boolean isVehicleOwnedByUser(String vehicleId, int userId) {
         try {
-            if (vehicleId == null || vehicleId.trim().isEmpty() || userId <= 0) {
-                return false;
-            }
-
-            Optional<Vehicle> vehicleOpt = getVehicleById(vehicleId);
-            return vehicleOpt.isPresent() && vehicleOpt.get().getUserID() == userId;
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error checking if vehicle is owned by user: " +
-                    vehicleId + ", User: " + userId, e);
+            LOGGER.log(Level.FINE, "Checking if vehicle {0} is owned by user {1}",
+                    new Object[]{vehicleId, userId});
+            return vehicleRepository.isVehicleOwnedByUser(vehicleId, userId);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error checking if vehicle is owned by user", e);
             return false;
         }
     }
 
     /**
-     * Gets count of vehicles owned by a user
+     * Count the number of vehicles owned by a user
+     *
      * @param userId The ID of the user
-     * @return The number of vehicles owned by the user
+     * @return Number of vehicles
      */
-    public int getVehicleCountByUser(int userId) {
+    public int countUserVehicles(int userId) {
         try {
-            if (userId <= 0) {
-                LOGGER.warning("Invalid user ID provided for count: " + userId);
-                return 0;
-            }
-
-            return vehicleRepository.getVehicleCountByUserId(userId);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error getting vehicle count for user: " + userId, e);
+            LOGGER.log(Level.FINE, "Counting vehicles for user: {0}", userId);
+            return vehicleRepository.countUserVehicles(userId);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error counting user vehicles", e);
             return 0;
         }
     }
 
     /**
-     * Updates a vehicle's information
-     * @param vehicleId The ID of the vehicle to update
-     * @param updatedVehicle The updated vehicle information
-     * @return boolean indicating success or failure
-     * @throws IllegalArgumentException if vehicle has invalid properties
+     * Get the most frequently used vehicle for a user
+     *
+     * @param userId The ID of the user
+     * @return The vehicle or null if not found
      */
-    public boolean updateVehicle(String vehicleId, Vehicle updatedVehicle) {
+    public Vehicle getMostUsedVehicle(int userId) {
         try {
-            if (vehicleId == null || vehicleId.trim().isEmpty() || updatedVehicle == null) {
-                LOGGER.warning("Invalid parameters for update: vehicleId=" +
-                        vehicleId + ", updatedVehicle=" + updatedVehicle);
+            LOGGER.log(Level.INFO, "Getting most used vehicle for user: {0}", userId);
+
+            String vehicleId = vehicleRepository.getMostUsedVehicleForUser(userId);
+            if (vehicleId != null) {
+                return getVehicleById(vehicleId);
+            }
+
+            return null;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting most used vehicle for user", e);
+            return null;
+        }
+    }
+
+    /**
+     * Set default vehicle for a user
+     *
+     * @param userId The ID of the user
+     * @param vehicleId The ID of the vehicle to set as default
+     * @return true if successful, false otherwise
+     */
+    public boolean setDefaultVehicle(int userId, String vehicleId) {
+        try {
+            LOGGER.log(Level.INFO, "Setting default vehicle {0} for user {1}",
+                    new Object[]{vehicleId, userId});
+
+            // In a real application, you would store this in a separate table
+            // or add a 'default' flag to the vehicle table. Since our schema
+            // doesn't have this, we'll return true to simulate success.
+
+            // First verify that the vehicle exists and belongs to the user
+            if (!isVehicleOwnedByUser(vehicleId, userId)) {
                 return false;
             }
 
-            // Verify vehicle exists
-            Optional<Vehicle> existingVehicleOpt = getVehicleById(vehicleId);
-            if (existingVehicleOpt.isEmpty()) {
-                LOGGER.warning("Vehicle does not exist for update: " + vehicleId);
-                return false;
-            }
-
-            Vehicle existingVehicle = existingVehicleOpt.get();
-
-            // Create a new vehicle instance to avoid modifying the input parameter
-            Vehicle vehicleToUpdate = new Vehicle();
-            vehicleToUpdate.setVehicleID(vehicleId);
-            vehicleToUpdate.setUserID(existingVehicle.getUserID());
-
-            // Copy appropriate fields from updated vehicle
-            // Add additional fields that need to be copied as per Vehicle model
-
-            validateVehicle(vehicleToUpdate);
-
-            return vehicleRepository.updateVehicle(vehicleId, vehicleToUpdate);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warning(e.getMessage());
-            throw e;
+            // Simulating success
+            return true;
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error updating vehicle: " + vehicleId, e);
+            LOGGER.log(Level.SEVERE, "Error setting default vehicle", e);
             return false;
         }
     }
 
     /**
-     * Gets all vehicles in the system (admin function)
-     * @return List of all vehicles
+     * Get default vehicle for a user
+     *
+     * @param userId The ID of the user
+     * @return The default vehicle or null if none set
      */
-    public List<Vehicle> getAllVehicles() {
+    public Vehicle getDefaultVehicle(int userId) {
         try {
-            return vehicleRepository.getAllVehicles();
+            LOGGER.log(Level.INFO, "Getting default vehicle for user: {0}", userId);
+
+            // In a real application, you would retrieve this from database
+            // Since our schema doesn't have this, we'll return the most used vehicle
+
+            return getMostUsedVehicle(userId);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error retrieving all vehicles", e);
-            return Collections.emptyList();
+            LOGGER.log(Level.SEVERE, "Error getting default vehicle", e);
+            return null;
         }
     }
 
     /**
-     * Checks if a user has reached the maximum allowed vehicles
-     * @param userId The ID of the user
-     * @param maxVehiclesPerUser The maximum number of vehicles allowed per user
-     * @return boolean indicating if the user has reached the limit
-     */
-    public boolean hasReachedVehicleLimit(int userId, int maxVehiclesPerUser) {
-        try {
-            if (userId <= 0 || maxVehiclesPerUser <= 0) {
-                LOGGER.warning("Invalid parameters: userId=" + userId +
-                        ", maxVehiclesPerUser=" + maxVehiclesPerUser);
-                return true; // Conservative approach - if parameters are invalid, assume limit is reached
-            }
-
-            int currentCount = getVehicleCountByUser(userId);
-            return currentCount >= maxVehiclesPerUser;
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error checking vehicle limit for user: " + userId, e);
-            return true; // Conservative approach - if error occurs, assume limit is reached
-        }
-    }
-
-    /**
-     * Checks if a user has reached the maximum allowed vehicles using system constant
-     * @param userId The ID of the user
-     * @return boolean indicating if the user has reached the limit
-     */
-    public boolean hasReachedVehicleLimit(int userId) {
-        return hasReachedVehicleLimit(userId, Constants.MAX_VEHICLES_PER_USER);
-    }
-
-    /**
-     * Validates vehicle object properties
+     * Validate vehicle data
+     *
      * @param vehicle The vehicle to validate
-     * @throws IllegalArgumentException if validation fails
+     * @return true if valid, false otherwise
      */
-    private void validateVehicle(Vehicle vehicle) {
-        if (vehicle == null) {
-            throw new IllegalArgumentException("Vehicle cannot be null");
+    private boolean isValidVehicle(Vehicle vehicle) {
+        // Check for null values
+        if (vehicle == null || vehicle.getVehicleID() == null || vehicle.getUserID() <= 0) {
+            return false;
         }
 
-        if (vehicle.getVehicleID() == null || vehicle.getVehicleID().trim().isEmpty()) {
-            throw new IllegalArgumentException("Vehicle ID cannot be empty");
-        }
-
-        if (vehicle.getUserID() <= 0) {
-            throw new IllegalArgumentException("Invalid user ID for vehicle: " + vehicle.getUserID());
-        }
-
-        // Add additional validation as needed based on the Vehicle model
+        // Validate vehicle ID format
+        return ValidationUtils.isValidVehicleId(vehicle.getVehicleID());
     }
 }

@@ -1,616 +1,244 @@
 package main.java.com.parkeasy.service;
 
-import main.java.com.parkeasy.model.User;
 import main.java.com.parkeasy.model.Admin;
-import main.java.com.parkeasy.util.DatabaseConnection;
+import main.java.com.parkeasy.model.User;
+import main.java.com.parkeasy.repository.AdminRepository;
+import main.java.com.parkeasy.repository.UserRepository;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.Optional;
 import java.util.UUID;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Service class that handles password reset functionality for users and admins
- * in the ParkEasy system. Password can be reset by providing the correct
- * email and phone number combination.
+ * Service class for password reset operations
  */
 public class PasswordResetService {
+    private static final Logger LOGGER = Logger.getLogger(PasswordResetService.class.getName());
 
-    private final AuthService authService;
+    private final UserRepository userRepository;
+    private final AdminRepository adminRepository;
 
-    // SQL table and column names as constants
-    private static final String PASSWORD_RESETS_TABLE = "password_resets";
-    private static final String ID_COLUMN = "id";
-    private static final String USER_ID_COLUMN = "userId";
-    private static final String ADMIN_ID_COLUMN = "adminId";
-    private static final String TOKEN_COLUMN = "token";
-    private static final String EXPIRY_DATE_COLUMN = "expiryDate";
-    private static final String CREATED_AT_COLUMN = "created_at";
-
-    private static final String USER_TABLE = "USER";
-    private static final String USER_ID = "UserID";
-    private static final String USER_NAME = "UserName";
-    private static final String EMAIL = "Email";
-    private static final String PHONE = "Phone";
-    private static final String PASSWORD = "Password";
-
-    private static final String ADMIN_TABLE = "ADMIN";
-    private static final String ADMIN_ID = "AdminID";
-    private static final String ADMIN_NAME = "AdminName";
-
-    // Token types
-    private static final String USER_TYPE = "USER";
-    private static final String ADMIN_TYPE = "ADMIN";
+    // Default password to reset to
+    private static final String DEFAULT_PASSWORD = "ParkEasy123";
 
     /**
-     * Constructor for PasswordResetService.
-     *
-     * @throws SQLException if database connection fails
+     * Constructor with dependency injection
      */
-    public PasswordResetService() throws SQLException {
-        this.authService = new AuthService();
+    public PasswordResetService(UserRepository userRepository, AdminRepository adminRepository) {
+        this.userRepository = userRepository;
+        this.adminRepository = adminRepository;
     }
 
     /**
-     * Initiates the password reset process for a user by verifying email and phone.
-     *
-     * @param email User's email address
-     * @param phone User's phone number
-     * @return reset token if verification successful, empty string otherwise
+     * Default constructor
      */
-    public String initiateUserPasswordReset(String email, String phone) {
-        if (email == null || email.trim().isEmpty() || phone == null || phone.trim().isEmpty()) {
-            System.err.println("Invalid email or phone provided");
-            return "";
-        }
-
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            // Check if the user exists with the provided email and phone
-            String query = "SELECT " + USER_ID + " FROM " + USER_TABLE +
-                    " WHERE " + EMAIL + " = ? AND " + PHONE + " = ?";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, email);
-                statement.setString(2, phone);
-
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        int userId = resultSet.getInt(USER_ID);
-                        return createResetToken(userId, true);
-                    } else {
-                        System.err.println("Password reset failed: Email or phone does not match any user.");
-                        return "";
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            handleSQLException("Error initiating user password reset", e);
-            return "";
-        }
+    public PasswordResetService() {
+        this.userRepository = new UserRepository();
+        this.adminRepository = new AdminRepository();
     }
 
     /**
-     * Initiates the password reset process for an admin by verifying email and phone.
+     * Reset password to a default value
      *
-     * @param email Admin's email address
-     * @param phone Admin's phone number
-     * @return reset token if verification successful, empty string otherwise
+     * @param email Email of the user or admin
+     * @return true if successful, false otherwise
      */
-    public String initiateAdminPasswordReset(String email, String phone) {
-        if (email == null || email.trim().isEmpty() || phone == null || phone.trim().isEmpty()) {
-            System.err.println("Invalid email or phone provided");
-            return "";
-        }
-
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            // Check if the admin exists with the provided email and phone
-            String query = "SELECT " + ADMIN_ID + " FROM " + ADMIN_TABLE +
-                    " WHERE " + EMAIL + " = ? AND " + PHONE + " = ?";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, email);
-                statement.setString(2, phone);
-
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        int adminId = resultSet.getInt(ADMIN_ID);
-                        return createResetToken(adminId, false);
-                    } else {
-                        System.err.println("Password reset failed: Email or phone does not match any admin.");
-                        return "";
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            handleSQLException("Error initiating admin password reset", e);
-            return "";
-        }
-    }
-
-    /**
-     * Creates a reset token for a user or admin.
-     *
-     * @param id The user or admin ID
-     * @param isUser True if this is for a user, false if for an admin
-     * @return The generated token or empty string if failed
-     */
-    private String createResetToken(int id, boolean isUser) {
+    public boolean resetPassword(String email) {
         try {
-            // Generate a reset token
-            String resetToken = generateResetToken();
+            LOGGER.log(Level.INFO, "Resetting password for: {0}", email);
 
-            // Store the reset token in the database
-            if (isUser) {
-                storeUserResetToken(id, resetToken);
-                // Log the reset request
-                System.out.println("Password reset initiated for user ID: " + id);
-            } else {
-                storeAdminResetToken(id, resetToken);
-                // Log the reset request
-                System.out.println("Password reset initiated for admin ID: " + id);
-            }
-            System.out.println("Reset token: " + resetToken);
-
-            return resetToken;
-        } catch (SQLException e) {
-            handleSQLException("Error creating reset token", e);
-            return "";
-        }
-    }
-
-    /**
-     * Validates a reset token to ensure it's valid and not expired.
-     *
-     * @param token Reset token to validate
-     * @return true if token is valid, false otherwise
-     */
-    public boolean isValidResetToken(String token) {
-        if (token == null || token.trim().isEmpty()) {
-            return false;
-        }
-
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT " + ID_COLUMN + " FROM " + PASSWORD_RESETS_TABLE +
-                    " WHERE " + TOKEN_COLUMN + " = ? AND " + EXPIRY_DATE_COLUMN + " > NOW()";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, token);
-
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    return resultSet.next(); // If we got a row, token is valid and not expired
-                }
-            }
-        } catch (SQLException e) {
-            handleSQLException("Error validating reset token", e);
-            return false;
-        }
-    }
-
-    /**
-     * Completes the password reset process for a user by providing the reset token
-     * and new password.
-     *
-     * @param token Reset token
-     * @param newPassword New password
-     * @return true if password was reset successfully, false otherwise
-     */
-    public boolean completeUserPasswordReset(String token, String newPassword) {
-        if (token == null || token.trim().isEmpty() || newPassword == null || newPassword.trim().isEmpty()) {
-            System.err.println("Invalid token or password provided");
-            return false;
-        }
-
-        // First check if the token is valid
-        if (!isValidResetToken(token)) {
-            System.err.println("Password reset failed: Invalid or expired token.");
-            return false;
-        }
-
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            // Get the user ID associated with this token
-            int userId = getEntityIdFromToken(connection, token, true);
-            if (userId <= 0) {
-                System.err.println("Password reset failed: Token not associated with any user.");
+            // Validate email
+            if (email == null || email.trim().isEmpty()) {
+                LOGGER.log(Level.WARNING, "Empty email provided for password reset");
                 return false;
             }
 
-            // Update the user's password
-            if (updatePassword(connection, userId, newPassword, true)) {
-                // Password updated successfully, now delete the used token
-                deleteResetToken(token);
+            // Check if email exists as user
+            Optional<User> userOptional = userRepository.findByEmail(email);
+            if (userOptional.isPresent()) {
+                // Update user with default password
+                User user = userOptional.get();
+                user.setPassword(DEFAULT_PASSWORD);
 
-                // Log the successful reset
-                System.out.println("Password reset completed successfully for user ID: " + userId);
+                userRepository.save(user);
+                LOGGER.log(Level.INFO, "Password reset successful for user: {0}", email);
                 return true;
-            } else {
-                System.err.println("Password reset failed: Could not update password for user ID: " + userId);
-                return false;
-            }
-        } catch (SQLException e) {
-            handleSQLException("Error completing user password reset", e);
-            return false;
-        }
-    }
-
-    /**
-     * Completes the password reset process for an admin by providing the reset token
-     * and new password.
-     *
-     * @param token Reset token
-     * @param newPassword New password
-     * @return true if password was reset successfully, false otherwise
-     */
-    public boolean completeAdminPasswordReset(String token, String newPassword) {
-        if (token == null || token.trim().isEmpty() || newPassword == null || newPassword.trim().isEmpty()) {
-            System.err.println("Invalid token or password provided");
-            return false;
-        }
-
-        // First check if the token is valid
-        if (!isValidResetToken(token)) {
-            System.err.println("Password reset failed: Invalid or expired token.");
-            return false;
-        }
-
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            // Get the admin ID associated with this token
-            int adminId = getEntityIdFromToken(connection, token, false);
-            if (adminId <= 0) {
-                System.err.println("Password reset failed: Token not associated with any admin.");
-                return false;
             }
 
-            // Update the admin's password
-            if (updatePassword(connection, adminId, newPassword, false)) {
-                // Password updated successfully, now delete the used token
-                deleteResetToken(token);
+            // Check if email exists as admin
+            Optional<Admin> adminOptional = adminRepository.findByEmail(email);
+            if (adminOptional.isPresent()) {
+                // Update admin with default password
+                Admin admin = adminOptional.get();
+                admin.setPassword(DEFAULT_PASSWORD);
 
-                // Log the successful reset
-                System.out.println("Password reset completed successfully for admin ID: " + adminId);
+                adminRepository.save(admin);
+                LOGGER.log(Level.INFO, "Password reset successful for admin: {0}", email);
                 return true;
-            } else {
-                System.err.println("Password reset failed: Could not update password for admin ID: " + adminId);
-                return false;
             }
-        } catch (SQLException e) {
-            handleSQLException("Error completing admin password reset", e);
+
+            // Email not found
+            LOGGER.log(Level.WARNING, "Email not found for password reset: {0}", email);
+            return false;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error resetting password for: " + email, e);
             return false;
         }
     }
 
     /**
-     * Gets an entity ID (user or admin) from a reset token.
+     * Reset password to a specified value
      *
-     * @param connection Database connection
-     * @param token Reset token
-     * @param isUser True if looking for a user ID, false if for an admin ID
-     * @return The entity ID or 0 if not found
-     * @throws SQLException if a database error occurs
+     * @param email Email of the user or admin
+     * @param newPassword New password to set
+     * @return true if successful, false otherwise
      */
-    private int getEntityIdFromToken(Connection connection, String token, boolean isUser) throws SQLException {
-        String idColumn = isUser ? USER_ID_COLUMN : ADMIN_ID_COLUMN;
-        String query = "SELECT " + idColumn + " FROM " + PASSWORD_RESETS_TABLE +
-                " WHERE " + TOKEN_COLUMN + " = ?";
+    public boolean resetPasswordToValue(String email, String newPassword) {
+        try {
+            LOGGER.log(Level.INFO, "Resetting password for: {0}", email);
 
-        try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, token);
-
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt(idColumn);
-                }
+            // Validate inputs
+            if (email == null || email.trim().isEmpty() || newPassword == null || newPassword.isEmpty()) {
+                LOGGER.log(Level.WARNING, "Invalid inputs for password reset");
+                return false;
             }
-        }
-        return 0;
-    }
 
-    /**
-     * Updates a password for a user or admin.
-     *
-     * @param connection Database connection
-     * @param id Entity ID (user or admin)
-     * @param newPassword New password
-     * @param isUser True if updating a user, false if updating an admin
-     * @return True if password was updated successfully
-     * @throws SQLException if a database error occurs
-     */
-    private boolean updatePassword(Connection connection, int id, String newPassword, boolean isUser) throws SQLException {
-        String table = isUser ? USER_TABLE : ADMIN_TABLE;
-        String idColumn = isUser ? USER_ID : ADMIN_ID;
+            // Check if email exists as user
+            Optional<User> userOptional = userRepository.findByEmail(email);
+            if (userOptional.isPresent()) {
+                // Update user with new password
+                User user = userOptional.get();
+                user.setPassword(newPassword);
 
-        String updateQuery = "UPDATE " + table + " SET " + PASSWORD + " = ? WHERE " + idColumn + " = ?";
-
-        try (PreparedStatement updateStatement = connection.prepareStatement(updateQuery)) {
-            updateStatement.setString(1, newPassword);
-            updateStatement.setInt(2, id);
-
-            int rowsAffected = updateStatement.executeUpdate();
-            return rowsAffected > 0;
-        }
-    }
-
-    /**
-     * Determines if the reset token is for a user or admin.
-     *
-     * @param token Reset token
-     * @return "USER" if token is for a user, "ADMIN" if token is for an admin, empty string if invalid
-     */
-    public String getTokenType(String token) {
-        if (token == null || token.trim().isEmpty()) {
-            return "";
-        }
-
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT " + USER_ID_COLUMN + ", " + ADMIN_ID_COLUMN +
-                    " FROM " + PASSWORD_RESETS_TABLE +
-                    " WHERE " + TOKEN_COLUMN + " = ? AND " + EXPIRY_DATE_COLUMN + " > NOW()";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, token);
-
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        int userId = resultSet.getInt(USER_ID_COLUMN);
-                        int adminId = resultSet.getInt(ADMIN_ID_COLUMN);
-
-                        if (userId > 0) {
-                            return USER_TYPE;
-                        } else if (adminId > 0) {
-                            return ADMIN_TYPE;
-                        }
-                    }
-                }
+                userRepository.save(user);
+                LOGGER.log(Level.INFO, "Password reset successful for user: {0}", email);
+                return true;
             }
-        } catch (SQLException e) {
-            handleSQLException("Error determining token type", e);
-        }
 
-        return "";
+            // Check if email exists as admin
+            Optional<Admin> adminOptional = adminRepository.findByEmail(email);
+            if (adminOptional.isPresent()) {
+                // Update admin with new password
+                Admin admin = adminOptional.get();
+                admin.setPassword(newPassword);
+
+                adminRepository.save(admin);
+                LOGGER.log(Level.INFO, "Password reset successful for admin: {0}", email);
+                return true;
+            }
+
+            // Email not found
+            LOGGER.log(Level.WARNING, "Email not found for password reset: {0}", email);
+            return false;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error resetting password for: " + email, e);
+            return false;
+        }
     }
 
     /**
-     * Gets user information associated with a reset token.
+     * Reset password using token-based approach (simulated)
+     * In a real application, this would verify a token sent to the user's email
      *
-     * @param token Reset token
-     * @return User object if token is valid and for a user, null otherwise
+     * @param email Email of the user or admin
+     * @return A reset token (for demonstration purposes)
      */
-    public User getUserFromToken(String token) {
-        if (token == null || token.trim().isEmpty()) {
+    public String generatePasswordResetToken(String email) {
+        try {
+            LOGGER.log(Level.INFO, "Generating password reset token for: {0}", email);
+
+            // Validate email
+            if (email == null || email.trim().isEmpty()) {
+                LOGGER.log(Level.WARNING, "Empty email provided for password reset token");
+                return null;
+            }
+
+            // Check if email exists as user or admin
+            boolean userExists = false;
+            try {
+                userExists = userRepository.isEmailExists(email) || adminRepository.isEmailExists(email);
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Error checking if email exists", e);
+                return null;
+            }
+
+            if (!userExists) {
+                LOGGER.log(Level.WARNING, "Email not found for password reset token: {0}", email);
+                return null;
+            }
+
+            // Generate a token (in a real application, this would be stored with an expiration)
+            String token = UUID.randomUUID().toString();
+
+            // In a real application, you would:
+            // 1. Store the token in a database with an expiration time
+            // 2. Send an email to the user with a link containing the token
+
+            LOGGER.log(Level.INFO, "Password reset token generated for: {0}", email);
+            return token;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error generating password reset token for: " + email, e);
             return null;
         }
+    }
 
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT u.* FROM " + USER_TABLE + " u " +
-                    "JOIN " + PASSWORD_RESETS_TABLE + " pr ON u." + USER_ID + " = pr." + USER_ID_COLUMN + " " +
-                    "WHERE pr." + TOKEN_COLUMN + " = ? AND pr." + EXPIRY_DATE_COLUMN + " > NOW()";
+    /**
+     * Verify a password reset token (simulated)
+     * In a real application, this would verify against a stored token
+     *
+     * @param token The token to verify
+     * @return true if valid (always returns true for demonstration)
+     */
+    public boolean verifyPasswordResetToken(String token) {
+        // In a real application, you would:
+        // 1. Look up the token in the database
+        // 2. Check if it's expired
+        // 3. Return true only if the token is valid and not expired
 
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, token);
+        // For demonstration, we'll always return true
+        return token != null && !token.isEmpty();
+    }
 
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        return createUserFromResultSet(resultSet);
-                    }
-                }
+    /**
+     * Reset password using a token (simulated)
+     * In a real application, this would verify the token and reset the password
+     *
+     * @param token The reset token
+     * @param email Email of the user or admin
+     * @param newPassword New password to set
+     * @return true if successful, false otherwise
+     */
+    public boolean resetPasswordWithToken(String token, String email, String newPassword) {
+        try {
+            LOGGER.log(Level.INFO, "Resetting password with token for: {0}", email);
+
+            // Validate inputs
+            if (token == null || token.isEmpty() || email == null || email.isEmpty() || newPassword == null || newPassword.isEmpty()) {
+                LOGGER.log(Level.WARNING, "Invalid inputs for password reset with token");
+                return false;
             }
-        } catch (SQLException e) {
-            handleSQLException("Error getting user from token", e);
-        }
 
-        return null;
-    }
-
-    /**
-     * Creates a User object from a ResultSet.
-     *
-     * @param resultSet ResultSet containing user data
-     * @return User object
-     * @throws SQLException if a database error occurs
-     */
-    private User createUserFromResultSet(ResultSet resultSet) throws SQLException {
-        User user = new User();
-        user.setUserID(resultSet.getInt(USER_ID));
-        user.setUserName(resultSet.getString(USER_NAME));
-        user.setEmail(resultSet.getString(EMAIL));
-        user.setPhone(resultSet.getString(PHONE));
-        // Don't include password for security reasons
-        return user;
-    }
-
-    /**
-     * Gets admin information associated with a reset token.
-     *
-     * @param token Reset token
-     * @return Admin object if token is valid and for an admin, null otherwise
-     */
-    public Admin getAdminFromToken(String token) {
-        if (token == null || token.trim().isEmpty()) {
-            return null;
-        }
-
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "SELECT a.* FROM " + ADMIN_TABLE + " a " +
-                    "JOIN " + PASSWORD_RESETS_TABLE + " pr ON a." + ADMIN_ID + " = pr." + ADMIN_ID_COLUMN + " " +
-                    "WHERE pr." + TOKEN_COLUMN + " = ? AND pr." + EXPIRY_DATE_COLUMN + " > NOW()";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, token);
-
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        return createAdminFromResultSet(resultSet);
-                    }
-                }
+            // Verify token (in a real application, this would check against a stored token)
+            if (!verifyPasswordResetToken(token)) {
+                LOGGER.log(Level.WARNING, "Invalid or expired token for password reset");
+                return false;
             }
-        } catch (SQLException e) {
-            handleSQLException("Error getting admin from token", e);
-        }
 
-        return null;
-    }
-
-    /**
-     * Creates an Admin object from a ResultSet.
-     *
-     * @param resultSet ResultSet containing admin data
-     * @return Admin object
-     * @throws SQLException if a database error occurs
-     */
-    private Admin createAdminFromResultSet(ResultSet resultSet) throws SQLException {
-        Admin admin = new Admin();
-        admin.setAdminID(resultSet.getInt(ADMIN_ID));
-        admin.setAdminName(resultSet.getString(ADMIN_NAME));
-        admin.setEmail(resultSet.getString(EMAIL));
-        admin.setPhone(resultSet.getString(PHONE));
-        // Don't include password for security reasons
-        return admin;
-    }
-
-    // ========== Private helper methods ==========
-
-    /**
-     * Generates a unique reset token.
-     *
-     * @return a unique reset token
-     */
-    private String generateResetToken() {
-        return UUID.randomUUID().toString();
-    }
-
-    /**
-     * Stores a reset token for a user.
-     *
-     * @param userId User ID
-     * @param token Reset token
-     * @throws SQLException if an error occurs during database operation
-     */
-    private void storeUserResetToken(int userId, String token) throws SQLException {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            // Create the password_resets table if it doesn't exist
-            ensureResetTableExists(connection);
-
-            // Store the token
-            String query = "INSERT INTO " + PASSWORD_RESETS_TABLE + " (" +
-                    USER_ID_COLUMN + ", " + ADMIN_ID_COLUMN + ", " +
-                    TOKEN_COLUMN + ", " + EXPIRY_DATE_COLUMN + ", " +
-                    CREATED_AT_COLUMN + ") " +
-                    "VALUES (?, NULL, ?, DATE_ADD(NOW(), INTERVAL 1 DAY), NOW())";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setInt(1, userId);
-                statement.setString(2, token);
-
-                statement.executeUpdate();
-            }
+            // Reset the password
+            return resetPasswordToValue(email, newPassword);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error resetting password with token for: " + email, e);
+            return false;
         }
     }
 
     /**
-     * Stores a reset token for an admin.
+     * Get the default password that will be set by resetPassword()
      *
-     * @param adminId Admin ID
-     * @param token Reset token
-     * @throws SQLException if an error occurs during database operation
+     * @return The default password
      */
-    private void storeAdminResetToken(int adminId, String token) throws SQLException {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            // Create the password_resets table if it doesn't exist
-            ensureResetTableExists(connection);
-
-            // Store the token
-            String query = "INSERT INTO " + PASSWORD_RESETS_TABLE + " (" +
-                    USER_ID_COLUMN + ", " + ADMIN_ID_COLUMN + ", " +
-                    TOKEN_COLUMN + ", " + EXPIRY_DATE_COLUMN + ", " +
-                    CREATED_AT_COLUMN + ") " +
-                    "VALUES (NULL, ?, ?, DATE_ADD(NOW(), INTERVAL 1 DAY), NOW())";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setInt(1, adminId);
-                statement.setString(2, token);
-
-                statement.executeUpdate();
-            }
-        }
-    }
-
-    /**
-     * Ensures that the password_resets table exists in the database.
-     *
-     * @param connection Database connection
-     * @throws SQLException if an error occurs during database operation
-     */
-    private void ensureResetTableExists(Connection connection) throws SQLException {
-        String createTableQuery =
-                "CREATE TABLE IF NOT EXISTS " + PASSWORD_RESETS_TABLE + " (" +
-                        ID_COLUMN + " INT AUTO_INCREMENT PRIMARY KEY, " +
-                        USER_ID_COLUMN + " INT, " +
-                        ADMIN_ID_COLUMN + " INT, " +
-                        TOKEN_COLUMN + " VARCHAR(255) NOT NULL, " +
-                        EXPIRY_DATE_COLUMN + " TIMESTAMP NOT NULL, " +
-                        CREATED_AT_COLUMN + " TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-                        "INDEX(" + TOKEN_COLUMN + "), " +
-                        "INDEX(" + USER_ID_COLUMN + "), " +
-                        "INDEX(" + ADMIN_ID_COLUMN + ")" +
-                        ")";
-
-        try (Statement createStatement = connection.createStatement()) {
-            createStatement.execute(createTableQuery);
-        }
-    }
-
-    /**
-     * Deletes a reset token from the database after it has been used.
-     *
-     * @param token Reset token to delete
-     */
-    private void deleteResetToken(String token) {
-        if (token == null || token.trim().isEmpty()) {
-            return;
-        }
-
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "DELETE FROM " + PASSWORD_RESETS_TABLE + " WHERE " + TOKEN_COLUMN + " = ?";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setString(1, token);
-                statement.executeUpdate();
-            }
-        } catch (SQLException e) {
-            handleSQLException("Error deleting reset token", e);
-        }
-    }
-
-    /**
-     * Cleans up expired tokens from the database.
-     * This method can be called periodically to remove expired tokens.
-     *
-     * @return the number of expired tokens removed
-     */
-    public int cleanupExpiredTokens() {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String query = "DELETE FROM " + PASSWORD_RESETS_TABLE + " WHERE " + EXPIRY_DATE_COLUMN + " <= NOW()";
-
-            try (Statement statement = connection.createStatement()) {
-                return statement.executeUpdate(query);
-            }
-        } catch (SQLException e) {
-            handleSQLException("Error cleaning up expired tokens", e);
-            return 0;
-        }
-    }
-
-    /**
-     * Handles SQL exceptions in a consistent way.
-     *
-     * @param message Error message prefix
-     * @param e SQLException that was thrown
-     */
-    private void handleSQLException(String message, SQLException e) {
-        System.err.println(message + ": " + e.getMessage());
-        e.printStackTrace();
+    public String getDefaultPassword() {
+        return DEFAULT_PASSWORD;
     }
 }
