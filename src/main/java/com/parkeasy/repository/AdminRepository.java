@@ -39,6 +39,8 @@ public class AdminRepository {
             pstmt.setString(3, admin.getEmail());
             pstmt.setString(4, admin.getPassword());
 
+            System.out.print(pstmt);
+
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) {

@@ -542,4 +542,29 @@ public class ReservationService {
             return 0.0;
         }
     }
+    /**
+     * Calculate revenue for a specific parking space within a time period
+     *
+     * @param parkingId Parking space ID
+     * @param startTime Start of period
+     * @param endTime End of period
+     * @return Total revenue
+     * @throws SQLException If database error occurs
+     */
+    public double calculateRevenueForParkingSpace(String parkingId, LocalDateTime startTime, LocalDateTime endTime) throws SQLException {
+        // Example implementation - in a real application, this would query the database
+        // Sum all reservation payments for the specified parking space and time period
+        try {
+            // Query database for all completed reservations in this time period for this parking space
+            // This is a mockup - implement actual database query in production
+            String query = "SELECT SUM(payment_amount) FROM reservations WHERE parking_id = ? " +
+                    "AND reservation_time BETWEEN ? AND ? AND status = 'COMPLETED'";
+
+            // For this example, we'll return a default value
+            // In a real implementation, execute the query and return the actual sum
+            return 0.0; // Return 0 for now - replace with actual implementation
+        } catch (Exception e) {
+            throw new SQLException("Error calculating revenue: " + e.getMessage(), e);
+        }
+    }
 }

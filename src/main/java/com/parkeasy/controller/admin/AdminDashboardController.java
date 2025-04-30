@@ -184,4 +184,37 @@ public class AdminDashboardController {
             return Collections.emptyList();
         }
     }
+// Include these methods in the AdminDashboardController class
+
+    /**
+     * Get the number of occupied slots for a specific parking space
+     *
+     * @param parkingId Parking space ID
+     * @return Count of occupied slots
+     */
+    public int getOccupiedSlots(String parkingId) {
+        try {
+            return parkingSpaceService.getOccupiedSlotCountByParkingId(parkingId);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error calculating occupied slots for parking space: " + parkingId, e);
+            return 0;
+        }
+    }
+
+    /**
+     * Calculate daily revenue for a specific parking space
+     *
+     * @param parkingId Parking space ID
+     * @return Daily revenue
+     */
+    public double getParkingSpaceDailyRevenue(String parkingId) {
+        try {
+            LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+            LocalDateTime tomorrow = today.plusDays(1);
+            return reservationService.calculateRevenueForParkingSpace(parkingId, today, tomorrow);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error calculating daily revenue for parking space: " + parkingId, e);
+            return 0.0;
+        }
+    }
 }

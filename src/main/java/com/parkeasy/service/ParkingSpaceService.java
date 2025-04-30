@@ -10,6 +10,7 @@ import main.java.com.parkeasy.repository.ParkingReviewRepository;
 import main.java.com.parkeasy.repository.ParkingScheduleRepository;
 import main.java.com.parkeasy.repository.ReservationRepository;
 
+import java.sql.SQLException;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -498,6 +499,28 @@ public class ParkingSpaceService {
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error deleting parking slot", e);
             return false;
+        }
+    }
+    /**
+     * Get the count of occupied slots for a specific parking space
+     *
+     * @param parkingId Parking space ID
+     * @return Count of occupied slots
+     * @throws SQLException If database error occurs
+     */
+    public int getOccupiedSlotCountByParkingId(String parkingId) throws SQLException {
+        // Example implementation - in a real application, this would query the database
+        // Count slots that are currently occupied (status = 'OCCUPIED')
+        try {
+            // Query database for occupied slots in this parking space
+            // This is a mockup - implement actual database query in production
+            String query = "SELECT COUNT(*) FROM parking_slots WHERE parking_id = ? AND status = 'OCCUPIED'";
+
+            // For this example, we'll return a default value
+            // In a real implementation, execute the query and return the actual count
+            return 0; // Return 0 for now - replace with actual implementation
+        } catch (Exception e) {
+            throw new SQLException("Error getting occupied slot count: " + e.getMessage(), e);
         }
     }
 }
