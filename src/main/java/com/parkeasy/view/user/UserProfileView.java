@@ -34,6 +34,8 @@ public class UserProfileView extends JFrame {
     private JButton addFundsButton;
     private JButton backButton;
 
+    private JTabbedPane tabbedPane;
+
     public UserProfileView(User user) {
         this.currentUser = user;
 
@@ -44,7 +46,7 @@ public class UserProfileView extends JFrame {
 
         // Set up the frame
         setTitle("ParkEasy - User Profile");
-        setSize(550, 600);
+        setSize(500, 400);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -68,244 +70,127 @@ public class UserProfileView extends JFrame {
         confirmPasswordField = new JPasswordField(20);
 
         amountField = new JTextField(20);
-        balanceLabel = new JLabel("$" + String.format("%.2f", currentUser.getBalance()));
+        addFundsButton = new JButton("Add Funds");
 
         updateProfileButton = new JButton("Update Profile");
         changePasswordButton = new JButton("Change Password");
-        addFundsButton = new JButton("Add Funds");
         backButton = new JButton("Back to Dashboard");
 
         // Add action listeners
-        updateProfileButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                updateProfile();
-            }
-        });
+        updateProfileButton.addActionListener(e -> updateProfile());
+        changePasswordButton.addActionListener(e -> changePassword());
+        addFundsButton.addActionListener(e -> addFunds());
+        backButton.addActionListener(e -> dispose());
 
-        changePasswordButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                changePassword();
-            }
-        });
-
-        addFundsButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                addFunds();
-            }
-        });
-
-        backButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                dispose();
-            }
-        });
+        tabbedPane = new JTabbedPane();
     }
 
     private void layoutComponents() {
-        // Create a main panel to hold everything
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        setLayout(new BorderLayout(10, 10));
 
-        // Add profile panel
-        mainPanel.add(createProfilePanel());
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-
-        // Add password panel
-        mainPanel.add(createPasswordPanel());
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-
-        // Add balance panel
-        mainPanel.add(createBalancePanel());
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-
-        // Add back button in a centered panel
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        buttonPanel.add(backButton);
-        mainPanel.add(buttonPanel);
-
-        // Create a scroll pane with the content
-        JScrollPane scrollPane = new JScrollPane(mainPanel);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setBorder(null);
-
-        // Add scroll pane to frame
-        setLayout(new BorderLayout());
-        add(scrollPane, BorderLayout.CENTER);
-    }
-
-    private JPanel createProfilePanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Profile Information"));
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 180));
-
-        // Create a form panel with right-aligned labels
-        JPanel formPanel = new JPanel(new GridBagLayout());
-
+        // Profile panel
+        JPanel profilePanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 10, 5, 5);
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
 
-        // Name field - right aligned label
+        // Name field
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.EAST;
-        JLabel nameLabel = new JLabel("Name:");
-        formPanel.add(nameLabel, gbc);
+        profilePanel.add(new JLabel("Name:"), gbc);
 
         gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        formPanel.add(nameField, gbc);
+        profilePanel.add(nameField, gbc);
 
         // Email field
         gbc.gridx = 0;
         gbc.gridy = 1;
-        gbc.anchor = GridBagConstraints.EAST;
-        gbc.fill = GridBagConstraints.NONE;
-        JLabel emailLabel = new JLabel("Email:");
-        formPanel.add(emailLabel, gbc);
+        profilePanel.add(new JLabel("Email:"), gbc);
 
         gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        formPanel.add(emailField, gbc);
+        profilePanel.add(emailField, gbc);
 
         // Phone field
         gbc.gridx = 0;
         gbc.gridy = 2;
-        gbc.anchor = GridBagConstraints.EAST;
-        gbc.fill = GridBagConstraints.NONE;
-        JLabel phoneLabel = new JLabel("Phone:");
-        formPanel.add(phoneLabel, gbc);
+        profilePanel.add(new JLabel("Phone:"), gbc);
 
         gbc.gridx = 1;
+        profilePanel.add(phoneField, gbc);
+
+        // Update button
+        gbc.gridx = 1;
+        gbc.gridy = 3;
+        gbc.anchor = GridBagConstraints.EAST;
+        profilePanel.add(updateProfileButton, gbc);
+
+        // Password panel
+        JPanel passwordPanel = new JPanel(new GridBagLayout());
+        gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        formPanel.add(phoneField, gbc);
-
-        // Add formPanel to the center of the main panel
-        panel.add(formPanel, BorderLayout.CENTER);
-
-        // Create button panel at the bottom
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(updateProfileButton);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-
-        return panel;
-    }
-
-    private JPanel createPasswordPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Change Password"));
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
-
-        // Create a form panel with right-aligned labels
-        JPanel formPanel = new JPanel(new GridBagLayout());
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 10, 5, 5);
 
         // Current password field
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.EAST;
-        JLabel currentPasswordLabel = new JLabel("Current Password:");
-        formPanel.add(currentPasswordLabel, gbc);
+        passwordPanel.add(new JLabel("Current Password:"), gbc);
 
         gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        formPanel.add(currentPasswordField, gbc);
+        passwordPanel.add(currentPasswordField, gbc);
 
         // New password field
         gbc.gridx = 0;
         gbc.gridy = 1;
-        gbc.anchor = GridBagConstraints.EAST;
-        gbc.fill = GridBagConstraints.NONE;
-        JLabel newPasswordLabel = new JLabel("New Password:");
-        formPanel.add(newPasswordLabel, gbc);
+        passwordPanel.add(new JLabel("New Password:"), gbc);
 
         gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        formPanel.add(newPasswordField, gbc);
+        passwordPanel.add(newPasswordField, gbc);
 
         // Confirm password field
         gbc.gridx = 0;
         gbc.gridy = 2;
-        gbc.anchor = GridBagConstraints.EAST;
-        gbc.fill = GridBagConstraints.NONE;
-        JLabel confirmPasswordLabel = new JLabel("Confirm Password:");
-        formPanel.add(confirmPasswordLabel, gbc);
+        passwordPanel.add(new JLabel("Confirm Password:"), gbc);
 
         gbc.gridx = 1;
+        passwordPanel.add(confirmPasswordField, gbc);
+
+        // Change password button
+        gbc.gridx = 1;
+        gbc.gridy = 3;
+        gbc.anchor = GridBagConstraints.EAST;
+        passwordPanel.add(changePasswordButton, gbc);
+
+        // Balance panel
+        JPanel balancePanel = new JPanel(new GridBagLayout());
+        gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        formPanel.add(confirmPasswordField, gbc);
 
-        // Add formPanel to the center of the main panel
-        panel.add(formPanel, BorderLayout.CENTER);
-
-        // Create button panel at the bottom
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(changePasswordButton);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-
-        return panel;
-    }
-
-    private JPanel createBalancePanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Account Balance"));
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
-
-        // Create a form panel with right-aligned labels
-        JPanel formPanel = new JPanel(new GridBagLayout());
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 10, 5, 5);
-
-        // Current balance field
+        // Amount field
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.EAST;
-        JLabel currentBalanceLabel = new JLabel("Current Balance:");
-        formPanel.add(currentBalanceLabel, gbc);
+        balancePanel.add(new JLabel("Amount:"), gbc);
 
         gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        formPanel.add(balanceLabel, gbc);
+        balancePanel.add(amountField, gbc);
 
-        // Add amount field
-        gbc.gridx = 0;
+        // Add funds button
+        gbc.gridx = 1;
         gbc.gridy = 1;
         gbc.anchor = GridBagConstraints.EAST;
-        JLabel addAmountLabel = new JLabel("Add Amount:");
-        formPanel.add(addAmountLabel, gbc);
+        balancePanel.add(addFundsButton, gbc);
 
-        gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        formPanel.add(amountField, gbc);
+        // Add panels to tabbed pane
+        tabbedPane.addTab("Profile Information", profilePanel);
+        tabbedPane.addTab("Change Password", passwordPanel);
+        tabbedPane.addTab("Add Funds", balancePanel);
 
-        // Add formPanel to the center of the main panel
-        panel.add(formPanel, BorderLayout.CENTER);
+        add(tabbedPane, BorderLayout.CENTER);
 
-        // Create button panel at the bottom
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(addFundsButton);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-
-        return panel;
+        // Back button at the bottom
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.add(backButton);
+        add(buttonPanel, BorderLayout.SOUTH);
     }
 
     private void updateProfile() {
@@ -431,19 +316,16 @@ public class UserProfileView extends JFrame {
         }
 
         try {
-            Map<String, Object> result = userProfileController.addFunds(currentUser.getUserID(), amount);
+            // Update the user's balance
+            currentUser.setBalance(currentUser.getBalance() + amount);
 
-            boolean success = (boolean) result.get("success");
+            // Reflect the updated balance in the database
+            boolean success = userProfileController.updateUserBalance(currentUser.getUserID(),
+                    currentUser.getBalance());
+
             if (success) {
-                // Update the user's balance
-                double newBalance = (double) result.get("newBalance");
-                currentUser.setBalance(newBalance);
-
-                // Update the balance label
-                balanceLabel.setText("$" + String.format("%.2f", newBalance));
-
                 JOptionPane.showMessageDialog(this,
-                        "Funds added successfully. New balance: $" + String.format("%.2f", newBalance),
+                        "Funds added successfully. New balance: $" + String.format("%.2f", currentUser.getBalance()),
                         "Funds Added",
                         JOptionPane.INFORMATION_MESSAGE);
 
@@ -451,8 +333,8 @@ public class UserProfileView extends JFrame {
                 amountField.setText("");
             } else {
                 JOptionPane.showMessageDialog(this,
-                        result.get("message").toString(),
-                        "Failed to Add Funds",
+                        "Failed to update balance in the database.",
+                        "Error",
                         JOptionPane.ERROR_MESSAGE);
             }
         } catch (Exception ex) {

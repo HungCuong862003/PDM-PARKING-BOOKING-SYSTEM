@@ -6,9 +6,10 @@ package main.java.com.parkeasy.util;
 public class Constants {
 
     // Database connection constants
-    protected static final String URL = "jdbc:mysql://127.0.0.1:3306/parking_system"; // TODO: change to your database name
+    protected static final String URL = "jdbc:mysql://127.0.0.1:3306/parking_system"; // TODO: change to your database
+    // name
     protected static final String USERNAME = "root"; // TODO: change to your database username
-    protected static final String PASSWORD = "HCuong@862003"; // TODO: change to your database password
+    protected static final String PASSWORD = "Khanhtai3101"; // TODO: change to your database password
 
     // Slot status constants
     public static final boolean SLOT_AVAILABLE = true; // Slot is available

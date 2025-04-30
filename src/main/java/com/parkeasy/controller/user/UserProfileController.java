@@ -45,10 +45,10 @@ public class UserProfileController {
     /**
      * Update user profile information
      *
-     * @param userId The ID of the user
+     * @param userId   The ID of the user
      * @param userName New user name (or null to keep current)
-     * @param phone New phone number (or null to keep current)
-     * @param email New email address (or null to keep current)
+     * @param phone    New phone number (or null to keep current)
+     * @param email    New email address (or null to keep current)
      * @return Map containing result of the update process
      */
     public Map<String, Object> updateUserProfile(int userId, String userName, String phone, String email) {
@@ -58,8 +58,7 @@ public class UserProfileController {
             if (user == null) {
                 return Map.of(
                         "success", false,
-                        "message", "User not found"
-                );
+                        "message", "User not found");
             }
 
             boolean updated = false;
@@ -75,8 +74,7 @@ public class UserProfileController {
                 if (userService.isPhoneNumberTaken(phone, userId)) {
                     return Map.of(
                             "success", false,
-                            "message", "Phone number is already in use"
-                    );
+                            "message", "Phone number is already in use");
                 }
                 user.setPhone(phone);
                 updated = true;
@@ -87,8 +85,7 @@ public class UserProfileController {
                 if (userService.isEmailTaken(email, userId)) {
                     return Map.of(
                             "success", false,
-                            "message", "Email address is already in use"
-                    );
+                            "message", "Email address is already in use");
                 }
                 user.setEmail(email);
                 updated = true;
@@ -97,8 +94,7 @@ public class UserProfileController {
             if (!updated) {
                 return Map.of(
                         "success", true,
-                        "message", "No changes made"
-                );
+                        "message", "No changes made");
             }
 
             // Save updated user
@@ -107,29 +103,26 @@ public class UserProfileController {
             if (success) {
                 return Map.of(
                         "success", true,
-                        "message", "Profile updated successfully"
-                );
+                        "message", "Profile updated successfully");
             } else {
                 return Map.of(
                         "success", false,
-                        "message", "Error updating profile"
-                );
+                        "message", "Error updating profile");
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error updating user profile: " + userId, e);
             return Map.of(
                     "success", false,
-                    "message", "Error updating profile: " + e.getMessage()
-            );
+                    "message", "Error updating profile: " + e.getMessage());
         }
     }
 
     /**
      * Change user password
      *
-     * @param userId The ID of the user
+     * @param userId          The ID of the user
      * @param currentPassword The current password
-     * @param newPassword The new password
+     * @param newPassword     The new password
      * @return Map containing result of the password change process
      */
     public Map<String, Object> changePassword(int userId, String currentPassword, String newPassword) {
@@ -139,24 +132,21 @@ public class UserProfileController {
             if (user == null) {
                 return Map.of(
                         "success", false,
-                        "message", "User not found"
-                );
+                        "message", "User not found");
             }
 
             // Verify current password (plain text comparison)
             if (!currentPassword.equals(user.getPassword())) {
                 return Map.of(
                         "success", false,
-                        "message", "Current password is incorrect"
-                );
+                        "message", "Current password is incorrect");
             }
 
             // Validate new password
             if (newPassword == null || newPassword.length() < 8) {
                 return Map.of(
                         "success", false,
-                        "message", "New password must be at least 8 characters long"
-                );
+                        "message", "New password must be at least 8 characters long");
             }
 
             // Store new password in plain text
@@ -168,20 +158,17 @@ public class UserProfileController {
             if (success) {
                 return Map.of(
                         "success", true,
-                        "message", "Password changed successfully"
-                );
+                        "message", "Password changed successfully");
             } else {
                 return Map.of(
                         "success", false,
-                        "message", "Error changing password"
-                );
+                        "message", "Error changing password");
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error changing password for user: " + userId, e);
             return Map.of(
                     "success", false,
-                    "message", "Error changing password: " + e.getMessage()
-            );
+                    "message", "Error changing password: " + e.getMessage());
         }
     }
 
@@ -198,8 +185,7 @@ public class UserProfileController {
             if (amount <= 0) {
                 return Map.of(
                         "success", false,
-                        "message", "Amount must be greater than zero"
-                );
+                        "message", "Amount must be greater than zero");
             }
 
             // Get current user data
@@ -207,8 +193,7 @@ public class UserProfileController {
             if (user == null) {
                 return Map.of(
                         "success", false,
-                        "message", "User not found"
-                );
+                        "message", "User not found");
             }
 
             // Update balance
@@ -222,20 +207,17 @@ public class UserProfileController {
                 return Map.of(
                         "success", true,
                         "message", "Funds added successfully",
-                        "newBalance", newBalance
-                );
+                        "newBalance", newBalance);
             } else {
                 return Map.of(
                         "success", false,
-                        "message", "Error adding funds"
-                );
+                        "message", "Error adding funds");
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error adding funds for user: " + userId, e);
             return Map.of(
                     "success", false,
-                    "message", "Error adding funds: " + e.getMessage()
-            );
+                    "message", "Error adding funds: " + e.getMessage());
         }
     }
 
@@ -257,7 +239,7 @@ public class UserProfileController {
     /**
      * Add a new vehicle for the user
      *
-     * @param userId The ID of the user
+     * @param userId    The ID of the user
      * @param vehicleId The vehicle ID/plate number
      * @return Map containing result of the add vehicle process
      */
@@ -267,8 +249,7 @@ public class UserProfileController {
             if (vehicleId == null || vehicleId.trim().isEmpty()) {
                 return Map.of(
                         "success", false,
-                        "message", "Vehicle ID is required"
-                );
+                        "message", "Vehicle ID is required");
             }
 
             // Check if vehicle ID is already registered
@@ -276,8 +257,7 @@ public class UserProfileController {
             if (existingVehicle != null) {
                 return Map.of(
                         "success", false,
-                        "message", "Vehicle is already registered"
-                );
+                        "message", "Vehicle is already registered");
             }
 
             // Check if user has not exceeded vehicle limit
@@ -285,8 +265,7 @@ public class UserProfileController {
             if (vehicleCount >= 5) { // Assuming a limit of 5 vehicles per user
                 return Map.of(
                         "success", false,
-                        "message", "Maximum number of vehicles reached (5)"
-                );
+                        "message", "Maximum number of vehicles reached (5)");
             }
 
             // Create new vehicle
@@ -299,27 +278,24 @@ public class UserProfileController {
                 return Map.of(
                         "success", true,
                         "message", "Vehicle added successfully",
-                        "vehicle", vehicle
-                );
+                        "vehicle", vehicle);
             } else {
                 return Map.of(
                         "success", false,
-                        "message", "Error adding vehicle"
-                );
+                        "message", "Error adding vehicle");
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error adding vehicle for user: " + userId, e);
             return Map.of(
                     "success", false,
-                    "message", "Error adding vehicle: " + e.getMessage()
-            );
+                    "message", "Error adding vehicle: " + e.getMessage());
         }
     }
 
     /**
      * Remove a vehicle
      *
-     * @param userId The ID of the user
+     * @param userId    The ID of the user
      * @param vehicleId The ID of the vehicle to remove
      * @return Map containing result of the remove vehicle process
      */
@@ -329,8 +305,7 @@ public class UserProfileController {
             if (!vehicleService.isVehicleOwnedByUser(vehicleId, userId)) {
                 return Map.of(
                         "success", false,
-                        "message", "You can only remove your own vehicles"
-                );
+                        "message", "You can only remove your own vehicles");
             }
 
             // Check if vehicle has active reservations
@@ -338,8 +313,7 @@ public class UserProfileController {
             if (hasActiveReservations) {
                 return Map.of(
                         "success", false,
-                        "message", "Vehicle has active reservations and cannot be removed"
-                );
+                        "message", "Vehicle has active reservations and cannot be removed");
             }
 
             // Remove vehicle
@@ -348,27 +322,24 @@ public class UserProfileController {
             if (success) {
                 return Map.of(
                         "success", true,
-                        "message", "Vehicle removed successfully"
-                );
+                        "message", "Vehicle removed successfully");
             } else {
                 return Map.of(
                         "success", false,
-                        "message", "Error removing vehicle"
-                );
+                        "message", "Error removing vehicle");
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error removing vehicle: " + vehicleId, e);
             return Map.of(
                     "success", false,
-                    "message", "Error removing vehicle: " + e.getMessage()
-            );
+                    "message", "Error removing vehicle: " + e.getMessage());
         }
     }
 
     /**
      * Delete user account
      *
-     * @param userId The ID of the user
+     * @param userId   The ID of the user
      * @param password User's password for verification
      * @return Map containing result of the account deletion process
      */
@@ -379,16 +350,14 @@ public class UserProfileController {
             if (user == null) {
                 return Map.of(
                         "success", false,
-                        "message", "User not found"
-                );
+                        "message", "User not found");
             }
 
             // Verify password (plain text comparison)
             if (!password.equals(user.getPassword())) {
                 return Map.of(
                         "success", false,
-                        "message", "Password is incorrect"
-                );
+                        "message", "Password is incorrect");
             }
 
             // Check if user has active reservations
@@ -396,8 +365,7 @@ public class UserProfileController {
             if (hasActiveReservations) {
                 return Map.of(
                         "success", false,
-                        "message", "You have active reservations. Please cancel them before deleting your account."
-                );
+                        "message", "You have active reservations. Please cancel them before deleting your account.");
             }
 
             // Delete user's vehicles
@@ -412,20 +380,31 @@ public class UserProfileController {
             if (success) {
                 return Map.of(
                         "success", true,
-                        "message", "Account deleted successfully"
-                );
+                        "message", "Account deleted successfully");
             } else {
                 return Map.of(
                         "success", false,
-                        "message", "Error deleting account"
-                );
+                        "message", "Error deleting account");
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error deleting user account: " + userId, e);
             return Map.of(
                     "success", false,
-                    "message", "Error deleting account: " + e.getMessage()
-            );
+                    "message", "Error deleting account: " + e.getMessage());
+        }
+    }
+
+    public boolean updateUserBalance(int userID, double balance) {
+        try {
+            User user = userService.getUserById(userID);
+            if (user == null) {
+                return false;
+            }
+            user.setBalance(balance);
+            return userService.updateUser(user);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error updating user balance: " + userID, e);
+            return false;
         }
     }
 }

@@ -64,10 +64,19 @@ public class DatabaseConnection {
     public static Connection getConnection() {
         try {
             if (connection == null || connection.isClosed()) {
-                Class.forName("com.mysql.cj.jdbc.Driver");
+                // Ensure the MySQL driver is loaded
+                try {
+                    Class.forName("com.mysql.cj.jdbc.Driver");
+                } catch (ClassNotFoundException e) {
+                    System.err.println("MySQL Driver not found: " + e.getMessage());
+                    return null;
+                }
+
+                // Establish the connection
                 connection = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+                System.out.println("Database connection established successfully.");
             }
-        } catch (SQLException | ClassNotFoundException e) {
+        } catch (SQLException e) {
             System.err.println("Error establishing connection: " + e.getMessage());
         }
         return connection;
@@ -76,7 +85,12 @@ public class DatabaseConnection {
     public static Statement getStatement() {
         try {
             if (statement == null || statement.isClosed()) {
-                statement = getConnection().createStatement();
+                Connection conn = getConnection();
+                if (conn != null) {
+                    statement = conn.createStatement();
+                } else {
+                    System.err.println("Cannot create statement: Connection is null.");
+                }
             }
         } catch (SQLException e) {
             System.err.println("Error creating statement: " + e.getMessage());
@@ -87,7 +101,12 @@ public class DatabaseConnection {
     public static PreparedStatement getPreparedStatement(String sql) {
         try {
             if (preparedStatement == null || preparedStatement.isClosed()) {
-                preparedStatement = getConnection().prepareStatement(sql);
+                Connection conn = getConnection();
+                if (conn != null) {
+                    preparedStatement = conn.prepareStatement(sql);
+                } else {
+                    System.err.println("Cannot create prepared statement: Connection is null.");
+                }
             }
         } catch (SQLException e) {
             System.err.println("Error creating prepared statement: " + e.getMessage());
@@ -97,8 +116,11 @@ public class DatabaseConnection {
 
     public static ResultSet getResultSet(String sql) {
         try {
-            if (resultSet == null || resultSet.isClosed()) {
-                resultSet = getStatement().executeQuery(sql);
+            Statement stmt = getStatement();
+            if (stmt != null) {
+                resultSet = stmt.executeQuery(sql);
+            } else {
+                System.err.println("Cannot execute query: Statement is null.");
             }
         } catch (SQLException e) {
             System.err.println("Error executing query: " + e.getMessage());
@@ -108,8 +130,10 @@ public class DatabaseConnection {
 
     public static ResultSet getResultSet(PreparedStatement preparedStatement) {
         try {
-            if (resultSet == null || resultSet.isClosed()) {
+            if (preparedStatement != null) {
                 resultSet = preparedStatement.executeQuery();
+            } else {
+                System.err.println("Cannot execute query: PreparedStatement is null.");
             }
         } catch (SQLException e) {
             System.err.println("Error executing prepared statement: " + e.getMessage());
@@ -128,23 +152,27 @@ public class DatabaseConnection {
     public static void showQuery(String query) {
         try {
             ResultSet rs = getResultSet(query);
-            while (rs.next()) {
-                String ParkingID = rs.getString("ParkingID");
-                String ParkingAddress = rs.getString("ParkingAddress");
-                float CostOfParking = rs.getFloat("CostOfParking");
-                int NumberOfSlots = rs.getInt("NumberOfSlots");
-                int MaxDuration = rs.getInt("MaxDuration");
-                String Description = rs.getString("Description");
-                int AdminID = rs.getInt("AdminID");
+            if (rs != null) {
+                while (rs.next()) {
+                    String ParkingID = rs.getString("ParkingID");
+                    String ParkingAddress = rs.getString("ParkingAddress");
+                    float CostOfParking = rs.getFloat("CostOfParking");
+                    int NumberOfSlots = rs.getInt("NumberOfSlots");
+                    int MaxDuration = rs.getInt("MaxDuration");
+                    String Description = rs.getString("Description");
+                    int AdminID = rs.getInt("AdminID");
 
-                // print
-                System.out.println("ParkingID: " + ParkingID);
-                System.out.println("ParkingAddress: " + ParkingAddress);
-                System.out.println("CostOfParking: " + CostOfParking);
-                System.out.println("NumberOfSlots: " + NumberOfSlots);
-                System.out.println("MaxDuration: " + MaxDuration);
-                System.out.println("Description: " + Description);
-                System.out.println("AdminID: " + AdminID);
+                    // print
+                    System.out.println("ParkingID: " + ParkingID);
+                    System.out.println("ParkingAddress: " + ParkingAddress);
+                    System.out.println("CostOfParking: " + CostOfParking);
+                    System.out.println("NumberOfSlots: " + NumberOfSlots);
+                    System.out.println("MaxDuration: " + MaxDuration);
+                    System.out.println("Description: " + Description);
+                    System.out.println("AdminID: " + AdminID);
+                }
+            } else {
+                System.err.println("ResultSet is null. Query execution failed.");
             }
         } catch (SQLException e) {
             System.err.println("Error executing query: " + e.getMessage());
