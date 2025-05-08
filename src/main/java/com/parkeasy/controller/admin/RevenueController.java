@@ -96,9 +96,6 @@ public class RevenueController {
             List<Map<String, Object>> weeklyBreakdown = revenueService.getWeeklyRevenueBreakdown(adminId, startOfMonth, endOfMonth);
             revenueStats.put("weeklyBreakdown", weeklyBreakdown);
 
-            // Add payment method breakdown
-            Map<String, Double> methodBreakdown = revenueService.getPaymentMethodBreakdown(adminId, startOfMonth, endOfMonth);
-            revenueStats.put("paymentMethodBreakdown", methodBreakdown);
 
             return revenueStats;
         } catch (Exception e) {

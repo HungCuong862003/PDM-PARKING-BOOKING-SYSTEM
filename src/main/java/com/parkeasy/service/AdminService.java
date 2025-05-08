@@ -2,22 +2,18 @@ package main.java.com.parkeasy.service;
 
 import main.java.com.parkeasy.model.Admin;
 import main.java.com.parkeasy.model.ParkingSpace;
+import main.java.com.parkeasy.model.Transaction;
 import main.java.com.parkeasy.repository.AdminRepository;
-import main.java.com.parkeasy.repository.ParkingSpaceRepository;
 import main.java.com.parkeasy.repository.ParkingSlotRepository;
-import main.java.com.parkeasy.repository.PaymentRepository;
+import main.java.com.parkeasy.repository.ParkingSpaceRepository;
 import main.java.com.parkeasy.repository.ReservationRepository;
+import main.java.com.parkeasy.model.Reservation;
 
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.sql.Timestamp;
 
 /**
  * Service class for admin-related operations
@@ -28,20 +24,20 @@ public class AdminService {
     private final AdminRepository adminRepository;
     private final ParkingSpaceRepository parkingSpaceRepository;
     private final ParkingSlotRepository parkingSlotRepository;
-    private final PaymentRepository paymentRepository;
     private final ReservationRepository reservationRepository;
+    private final RevenueService revenueService;
 
     /**
      * Constructor with dependency injection
      */
     public AdminService(AdminRepository adminRepository, ParkingSpaceRepository parkingSpaceRepository,
-                        ParkingSlotRepository parkingSlotRepository, PaymentRepository paymentRepository,
-                        ReservationRepository reservationRepository) {
+                        ParkingSlotRepository parkingSlotRepository, ReservationRepository reservationRepository,
+                        RevenueService revenueService) {
         this.adminRepository = adminRepository;
         this.parkingSpaceRepository = parkingSpaceRepository;
         this.parkingSlotRepository = parkingSlotRepository;
-        this.paymentRepository = paymentRepository;
         this.reservationRepository = reservationRepository;
+        this.revenueService = revenueService;
     }
 
     /**
@@ -51,8 +47,8 @@ public class AdminService {
         this.adminRepository = new AdminRepository();
         this.parkingSpaceRepository = new ParkingSpaceRepository();
         this.parkingSlotRepository = new ParkingSlotRepository();
-        this.paymentRepository = new PaymentRepository();
         this.reservationRepository = new ReservationRepository();
+        this.revenueService = new RevenueService();
     }
 
     /**
@@ -109,7 +105,6 @@ public class AdminService {
             return false;
         }
     }
-
 
     /**
      * Get admin by ID
@@ -221,7 +216,6 @@ public class AdminService {
         return parkingSlotRepository.updateSlotAvailability(slotNumber, isAvailable);
     }
 
-
     /**
      * Get dashboard summary for an admin
      *
@@ -257,19 +251,19 @@ public class AdminService {
             summary.put("occupiedSlots", occupiedSlots);
 
             // Calculate occupancy rate
-            double occupancyRate = totalSlots > 0 ? ((double) occupiedSlots / totalSlots) * 100 : 0;
+            float occupancyRate = totalSlots > 0 ? (float)(occupiedSlots) / totalSlots * 100 : 0;
             summary.put("occupancyRate", occupancyRate);
 
             // Get revenue statistics for today
             LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
             LocalDateTime endOfDay = startOfDay.plusDays(1);
-            Map<String, Object> todayRevenue = getRevenueStatistics(adminId, startOfDay, endOfDay);
+            Map<String, Object> todayRevenue = revenueService.getRevenueStatistics(adminId, startOfDay, endOfDay);
             summary.put("todayRevenue", todayRevenue.getOrDefault("totalRevenue", 0.0));
 
             // Get revenue statistics for this month
             LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
             LocalDateTime endOfMonth = startOfMonth.plusMonths(1);
-            Map<String, Object> monthlyRevenue = getRevenueStatistics(adminId, startOfMonth, endOfMonth);
+            Map<String, Object> monthlyRevenue = revenueService.getRevenueStatistics(adminId, startOfMonth, endOfMonth);
             summary.put("monthlyRevenue", monthlyRevenue.getOrDefault("totalRevenue", 0.0));
 
             // Get most popular parking space
@@ -326,98 +320,6 @@ public class AdminService {
     }
 
     /**
-     * Get revenue statistics for a specific time period
-     *
-     * @param adminId Admin ID
-     * @param startDate Start date
-     * @param endDate End date
-     * @return Map containing revenue statistics
-     */
-    public Map<String, Object> getRevenueStatistics(int adminId, LocalDateTime startDate, LocalDateTime endDate) {
-        Map<String, Object> statistics = new HashMap<>();
-        try {
-            // Get all parking spaces managed by this admin
-            List<String> parkingIds = parkingSpaceRepository.getAllParkingSpaceIdsByAdminId(adminId);
-
-            if (parkingIds.isEmpty()) {
-                statistics.put("totalRevenue", 0.0);
-                statistics.put("reservationCount", 0);
-                statistics.put("paymentCount", 0);
-                return statistics;
-            }
-
-            // Get payments for these parking spaces within the date range
-            List<Map<String, Object>> payments = new ArrayList<>();
-            double totalRevenue = 0.0;
-
-            // Convert to java.sql.Timestamp for the query
-            Timestamp startTimestamp = Timestamp.valueOf(startDate);
-            Timestamp endTimestamp = Timestamp.valueOf(endDate);
-
-            // Prepare SQL query for revenue calculation
-            String sql = "SELECT p.* FROM payment p " +
-                    "JOIN parking_reservation pr ON p.ReservationID = pr.ReservationID " +
-                    "JOIN parkingslot ps ON pr.SlotNumber = ps.SlotNumber " +
-                    "WHERE ps.ParkingID IN (";
-
-            for (int i = 0; i < parkingIds.size(); i++) {
-                sql += "?";
-                if (i < parkingIds.size() - 1) {
-                    sql += ",";
-                }
-            }
-
-            sql += ") AND p.PaymentDate BETWEEN ? AND ?";
-
-            LOGGER.log(Level.INFO, "Executing SQL: {0}", sql);
-
-            // Get payments from the repository
-            List<main.java.com.parkeasy.model.Payment> paymentList =
-                    paymentRepository.getPaymentsByParkingIdsAndDateRange(parkingIds, startDate, endDate);
-
-            // Process payments
-            for (main.java.com.parkeasy.model.Payment payment : paymentList) {
-                totalRevenue += payment.getAmount();
-
-                Map<String, Object> paymentData = new HashMap<>();
-                paymentData.put("paymentId", payment.getPaymentID());
-                paymentData.put("amount", payment.getAmount());
-                paymentData.put("date", payment.getPaymentDate());
-                paymentData.put("method", payment.getPaymentMethod());
-                paymentData.put("reservationId", payment.getReservationID());
-
-                payments.add(paymentData);
-            }
-
-            // Get reservation count for the period
-            int reservationCount = 0;
-            for (String parkingId : parkingIds) {
-                // Convert LocalDateTime to java.util.Date for getReservationsByParkingIdAndDateRange
-                java.util.Date startUtilDate = java.util.Date.from(startDate.atZone(java.time.ZoneId.systemDefault()).toInstant());
-                java.util.Date endUtilDate = java.util.Date.from(endDate.atZone(java.time.ZoneId.systemDefault()).toInstant());
-
-                List<main.java.com.parkeasy.model.Reservation> reservations =
-                        reservationRepository.getReservationsByParkingIdAndDateRange(parkingId, startUtilDate, endUtilDate);
-
-                reservationCount += reservations.size();
-            }
-
-            // Populate statistics
-            statistics.put("totalRevenue", totalRevenue);
-            statistics.put("reservationCount", reservationCount);
-            statistics.put("paymentCount", payments.size());
-            statistics.put("payments", payments);
-
-            return statistics;
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error calculating revenue statistics for admin: " + adminId, e);
-            statistics.put("error", "Error calculating revenue statistics: " + e.getMessage());
-            statistics.put("totalRevenue", 0.0);
-            return statistics;
-        }
-    }
-
-    /**
      * Get the most popular parking space for a time period
      *
      * @param adminId Admin ID
@@ -433,7 +335,68 @@ public class AdminService {
             return "Unknown";
         }
     }
+    /**
+     * Get revenue statistics for an admin within a specific time period
+     *
+     * @param adminId The ID of the admin
+     * @param startDate Start date of the period
+     * @param endDate End date of the period
+     * @return Map containing revenue statistics
+     */
+    public Map<String, Object> getRevenueStatistics(int adminId, LocalDateTime startDate, LocalDateTime endDate) {
+        Map<String, Object> statistics = new HashMap<>();
+        try {
+            LOGGER.log(Level.INFO, "Calculating revenue statistics for admin {0} between {1} and {2}",
+                    new Object[]{adminId, startDate, endDate});
 
+            // Get total revenue for the period
+            TransactionService transactionService = new TransactionService();
+            float totalRevenue = transactionService.calculateRevenueForAdminByDateRange(adminId, startDate, endDate);
+            statistics.put("totalRevenue", totalRevenue);
+
+            // Get all transactions for the period
+            List<Transaction> transactions = transactionService.getTransactionsByAdminIdAndDateRange(adminId, startDate, endDate);
+            statistics.put("transactionCount", transactions.size());
+
+            // Get parking spaces managed by this admin
+            ParkingSpaceRepository parkingSpaceRepository = new ParkingSpaceRepository();
+            List<ParkingSpace> parkingSpaces = parkingSpaceRepository.getParkingSpacesByAdminId(adminId);
+
+            // Calculate revenue by parking space
+            Map<String, Float> revenueByParkingSpace = new HashMap<>();
+            for (ParkingSpace space : parkingSpaces) {
+                float spaceRevenue = transactionService.calculateRevenueForParkingSpaceByDateRange(
+                        space.getParkingID(), startDate, endDate);
+                revenueByParkingSpace.put(space.getParkingAddress(), spaceRevenue);
+            }
+            statistics.put("revenueByParkingSpace", revenueByParkingSpace);
+
+            // Calculate average revenue per transaction
+            float avgRevenuePerTransaction = transactions.isEmpty() ? 0 : totalRevenue / transactions.size();
+            statistics.put("averageRevenuePerTransaction", avgRevenuePerTransaction);
+
+            // Get the number of unique vehicles/customers
+            Set<String> uniqueVehicles = new HashSet<>();
+            for (Transaction transaction : transactions) {
+                Reservation reservation = reservationRepository.getReservationById(transaction.getReservationID());
+                if (reservation != null) {
+                    uniqueVehicles.add(reservation.getVehicleID());
+                }
+            }
+            statistics.put("uniqueCustomerCount", uniqueVehicles.size());
+
+            statistics.put("startDate", startDate);
+            statistics.put("endDate", endDate);
+            statistics.put("success", true);
+
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error calculating revenue statistics for admin: " + adminId, e);
+            statistics.put("success", false);
+            statistics.put("message", "Error calculating revenue statistics: " + e.getMessage());
+        }
+
+        return statistics;
+    }
     /**
      * Get recent activity for an admin
      *
@@ -452,11 +415,11 @@ public class AdminService {
             }
 
             // Get recent reservations for these parking spaces
-            List<main.java.com.parkeasy.model.Reservation> reservations =
+            List<Reservation> reservations =
                     reservationRepository.getRecentReservationsByParkingIds(parkingIds, limit);
 
             // Process reservations
-            for (main.java.com.parkeasy.model.Reservation reservation : reservations) {
+            for (Reservation reservation : reservations) {
                 Map<String, Object> activity = new HashMap<>();
                 activity.put("type", "Reservation");
                 activity.put("timestamp", reservation.getCreatedAt());

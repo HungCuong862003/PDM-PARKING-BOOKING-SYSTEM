@@ -61,7 +61,7 @@ public class RegistrationController {
             newUser.setEmail(email);
             newUser.setPhone(phone);
             newUser.setPassword(password); // Store password as plain text
-            newUser.setBalance(0.0); // Initialize balance to 0
+            newUser.setBalance(0.0F); // Initialize balance to 0
 
             // Save the user
             boolean success = userService.createUser(newUser);

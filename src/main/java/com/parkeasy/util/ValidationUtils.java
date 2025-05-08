@@ -110,7 +110,7 @@ public class ValidationUtils {
      * @param max The maximum allowed value
      * @return true if the value is within the range, false otherwise
      */
-    public static boolean isInRange(double value, double min, double max) {
+    public static boolean isInRange(float value, float min, float max) {
         return value >= min && value <= max;
     }
 
@@ -120,7 +120,7 @@ public class ValidationUtils {
      * @param value The number to check
      * @return true if the number is positive, false otherwise
      */
-    public static boolean isPositive(double value) {
+    public static boolean isPositive(float value) {
         return value > 0;
     }
 
@@ -130,7 +130,7 @@ public class ValidationUtils {
      * @param value The number to check
      * @return true if the number is not negative, false otherwise
      */
-    public static boolean isNotNegative(double value) {
+    public static boolean isNotNegative(float value) {
         return value >= 0;
     }
     /**

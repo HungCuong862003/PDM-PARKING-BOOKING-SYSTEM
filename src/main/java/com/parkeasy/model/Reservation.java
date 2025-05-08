@@ -14,6 +14,7 @@ public class Reservation {
     private Time endTime;
     private Timestamp createdAt;
     private String status;
+    private Float fee; // Added fee field
     // foreign keys
     private String vehicleID;
     private String slotNumber;
@@ -34,11 +35,12 @@ public class Reservation {
      * @param endTime The end time
      * @param createdAt The creation timestamp
      * @param status The status of the reservation
+     * @param fee The fee for the reservation
      * @param vehicleID The ID of the vehicle
+     * @param slotNumber The parking slot number
      */
-    @Deprecated
     public Reservation(int reservationID, Date startDate, Date endDate, Time startTime, Time endTime,
-                       Timestamp createdAt, String status, String vehicleID, String slotNumber) {
+                       Timestamp createdAt, String status, float fee, String vehicleID, String slotNumber) {
         this.reservationID = reservationID;
         this.startDate = startDate;
         this.endDate = endDate;
@@ -46,6 +48,7 @@ public class Reservation {
         this.endTime = endTime;
         this.createdAt = createdAt;
         this.status = status;
+        this.fee = fee;
         this.vehicleID = vehicleID;
         this.slotNumber = slotNumber;
     }
@@ -106,6 +109,14 @@ public class Reservation {
         this.status = status;
     }
 
+    public float getFee() {
+        return fee;
+    }
+
+    public void setFee(float fee) {
+        this.fee = fee;
+    }
+
     public String getVehicleID() {
         return vehicleID;
     }
@@ -114,25 +125,13 @@ public class Reservation {
         this.vehicleID = vehicleID;
     }
 
-    /**
-     * Get the parking slot number
-     *
-     * @return The slot number
-     */
     public String getSlotNumber() {
         return slotNumber;
     }
 
-    /**
-     * Set the parking slot number
-     *
-     * @param slotNumber The slot number to set
-     */
     public void setSlotNumber(String slotNumber) {
         this.slotNumber = slotNumber;
     }
-
-
 
     @Override
     public String toString() {
@@ -144,6 +143,7 @@ public class Reservation {
                 ", endTime=" + endTime +
                 ", createdAt=" + createdAt +
                 ", status='" + status + '\'' +
+                ", fee=" + fee +
                 ", vehicleID='" + vehicleID + '\'' +
                 ", slotNumber='" + slotNumber + '\'' +
                 '}';

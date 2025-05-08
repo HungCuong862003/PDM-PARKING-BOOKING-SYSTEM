@@ -1,12 +1,11 @@
 package main.java.com.parkeasy.service;
 
-import main.java.com.parkeasy.model.Payment;
-import main.java.com.parkeasy.model.Reservation;
 import main.java.com.parkeasy.model.ParkingSpace;
-import main.java.com.parkeasy.repository.PaymentRepository;
-import main.java.com.parkeasy.repository.ReservationRepository;
+import main.java.com.parkeasy.model.Reservation;
+import main.java.com.parkeasy.model.Transaction;
 import main.java.com.parkeasy.repository.ParkingSpaceRepository;
 import main.java.com.parkeasy.repository.ParkingSlotRepository;
+import main.java.com.parkeasy.repository.ReservationRepository;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -18,12 +17,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Service class for revenue-related operations
+ * Service class for revenue-related reporting and analysis
  */
 public class RevenueService {
     private static final Logger LOGGER = Logger.getLogger(RevenueService.class.getName());
 
-    private final PaymentRepository paymentRepository;
+    private final TransactionService transactionService;
     private final ReservationRepository reservationRepository;
     private final ParkingSpaceRepository parkingSpaceRepository;
     private final ParkingSlotRepository parkingSlotRepository;
@@ -31,11 +30,11 @@ public class RevenueService {
     /**
      * Constructor with dependency injection
      */
-    public RevenueService(PaymentRepository paymentRepository,
+    public RevenueService(TransactionService transactionService,
                           ReservationRepository reservationRepository,
                           ParkingSpaceRepository parkingSpaceRepository,
                           ParkingSlotRepository parkingSlotRepository) {
-        this.paymentRepository = paymentRepository;
+        this.transactionService = transactionService;
         this.reservationRepository = reservationRepository;
         this.parkingSpaceRepository = parkingSpaceRepository;
         this.parkingSlotRepository = parkingSlotRepository;
@@ -45,7 +44,7 @@ public class RevenueService {
      * Default constructor
      */
     public RevenueService() {
-        this.paymentRepository = new PaymentRepository();
+        this.transactionService = new TransactionService();
         this.reservationRepository = new ReservationRepository();
         this.parkingSpaceRepository = new ParkingSpaceRepository();
         this.parkingSlotRepository = new ParkingSlotRepository();
@@ -64,35 +63,19 @@ public class RevenueService {
         try {
             LOGGER.log(Level.INFO, "Getting revenue statistics for admin: {0}", adminId);
 
+            // Calculate total revenue using TransactionService
+            float totalRevenue = transactionService.calculateRevenueForAdminByDateRange(adminId, startDate, endDate);
+
+            // Get all transactions for this admin in the date range
+            List<Transaction> transactions = transactionService.getTransactionsByAdminIdAndDateRange(adminId, startDate, endDate);
+
+            // Calculate average transaction amount
+            float avgTransactionAmount = transactions.isEmpty() ? 0.0f : totalRevenue / transactions.size();
+
             // Get all parking spaces managed by this admin
             List<String> parkingIds = parkingSpaceRepository.getAllParkingSpaceIdsByAdminId(adminId);
 
-            if (parkingIds.isEmpty()) {
-                statistics.put("totalRevenue", 0.0);
-                statistics.put("reservationCount", 0);
-                statistics.put("paymentCount", 0);
-                return statistics;
-            }
-
-            // Get payments for these parking spaces
-            List<Payment> payments = new ArrayList<>();
-            double totalRevenue = 0.0;
-
-            for (String parkingId : parkingIds) {
-                // Convert to java.util.Date for getPaymentsByParkingIdAndDateRange
-                java.util.Date startUtilDate = java.util.Date.from(startDate.atZone(java.time.ZoneId.systemDefault()).toInstant());
-                java.util.Date endUtilDate = java.util.Date.from(endDate.atZone(java.time.ZoneId.systemDefault()).toInstant());
-
-                List<Payment> parkingPayments = paymentRepository.getPaymentsByParkingIdAndDateRange(parkingId, startUtilDate, endUtilDate);
-                payments.addAll(parkingPayments);
-
-                // Sum revenue
-                for (Payment payment : parkingPayments) {
-                    totalRevenue += payment.getAmount();
-                }
-            }
-
-            // Get reservation count
+            // Count reservations in the date range
             int reservationCount = 0;
             for (String parkingId : parkingIds) {
                 // Convert to java.util.Date for getReservationsByParkingIdAndDateRange
@@ -103,14 +86,14 @@ public class RevenueService {
                 reservationCount += reservations.size();
             }
 
-            // Calculate average payment amount
-            double avgPaymentAmount = payments.isEmpty() ? 0.0 : totalRevenue / payments.size();
-
-            // Calculate statistics
+            // Populate statistics
             statistics.put("totalRevenue", totalRevenue);
             statistics.put("reservationCount", reservationCount);
-            statistics.put("paymentCount", payments.size());
-            statistics.put("averagePaymentAmount", avgPaymentAmount);
+            statistics.put("transactionCount", transactions.size());
+            statistics.put("averageTransactionAmount", avgTransactionAmount);
+            statistics.put("startDate", startDate);
+            statistics.put("endDate", endDate);
+            statistics.put("adminId", adminId);
 
             return statistics;
         } catch (Exception e) {
@@ -154,30 +137,28 @@ public class RevenueService {
                     break;
                 }
 
-                double dailyRevenue = 0.0;
+                float dailyRevenue = 0.0F;
                 int reservationCount = 0;
+                int transactionCount = 0;
 
-                // Get payments for this day
+                // Get transactions for this day (for all parking spaces)
                 for (String parkingId : parkingIds) {
-                    // Convert to java.util.Date for getPaymentsByParkingIdAndDateRange
-                    java.util.Date dayStartUtilDate = java.util.Date.from(dayStart.atZone(java.time.ZoneId.systemDefault()).toInstant());
-                    java.util.Date dayEndUtilDate = java.util.Date.from(dayEnd.atZone(java.time.ZoneId.systemDefault()).toInstant());
+                    List<Transaction> transactions = transactionService.getTransactionsByParkingIdAndDateRange(parkingId, dayStart, dayEnd);
 
-                    List<Payment> payments = paymentRepository.getPaymentsByParkingIdAndDateRange(parkingId, dayStartUtilDate, dayEndUtilDate);
+                    for (Transaction transaction : transactions) {
+                        dailyRevenue += transaction.getAmount();
+                        transactionCount++;
 
-                    for (Payment payment : payments) {
-                        dailyRevenue += payment.getAmount();
+                        // Count each transaction as one reservation
+                        reservationCount++;
                     }
-
-                    // Get reservations for this day
-                    List<Reservation> reservations = reservationRepository.getReservationsByParkingIdAndDateRange(parkingId, dayStartUtilDate, dayEndUtilDate);
-                    reservationCount += reservations.size();
                 }
 
                 Map<String, Object> dayData = new HashMap<>();
                 dayData.put("date", dayStart.toLocalDate());
                 dayData.put("revenue", dailyRevenue);
                 dayData.put("reservationCount", reservationCount);
+                dayData.put("transactionCount", transactionCount);
 
                 dailyBreakdown.add(dayData);
             }
@@ -202,13 +183,6 @@ public class RevenueService {
         try {
             LOGGER.log(Level.INFO, "Getting weekly revenue breakdown for admin: {0}", adminId);
 
-            // Get all parking spaces managed by this admin
-            List<String> parkingIds = parkingSpaceRepository.getAllParkingSpaceIdsByAdminId(adminId);
-
-            if (parkingIds.isEmpty()) {
-                return weeklyBreakdown;
-            }
-
             // Calculate number of weeks in the period
             LocalDateTime currentWeekStart = startDate;
 
@@ -220,24 +194,19 @@ public class RevenueService {
                     weekEnd = endDate;
                 }
 
-                double weeklyRevenue = 0.0;
+                float weeklyRevenue = 0.0F;
                 int reservationCount = 0;
+                int transactionCount = 0;
 
-                // Get payments for this week
-                for (String parkingId : parkingIds) {
-                    // Convert to java.util.Date for getPaymentsByParkingIdAndDateRange
-                    java.util.Date weekStartUtilDate = java.util.Date.from(currentWeekStart.atZone(java.time.ZoneId.systemDefault()).toInstant());
-                    java.util.Date weekEndUtilDate = java.util.Date.from(weekEnd.atZone(java.time.ZoneId.systemDefault()).toInstant());
+                // Get transactions for all parking spaces in this week
+                List<Transaction> weeklyTransactions = transactionService.getTransactionsByAdminIdAndDateRange(adminId, currentWeekStart, weekEnd);
 
-                    List<Payment> payments = paymentRepository.getPaymentsByParkingIdAndDateRange(parkingId, weekStartUtilDate, weekEndUtilDate);
+                for (Transaction transaction : weeklyTransactions) {
+                    weeklyRevenue += transaction.getAmount();
+                    transactionCount++;
 
-                    for (Payment payment : payments) {
-                        weeklyRevenue += payment.getAmount();
-                    }
-
-                    // Get reservations for this week
-                    List<Reservation> reservations = reservationRepository.getReservationsByParkingIdAndDateRange(parkingId, weekStartUtilDate, weekEndUtilDate);
-                    reservationCount += reservations.size();
+                    // Count each transaction as one reservation
+                    reservationCount++;
                 }
 
                 Map<String, Object> weekData = new HashMap<>();
@@ -245,6 +214,7 @@ public class RevenueService {
                 weekData.put("weekEnd", weekEnd.toLocalDate());
                 weekData.put("revenue", weeklyRevenue);
                 weekData.put("reservationCount", reservationCount);
+                weekData.put("transactionCount", transactionCount);
 
                 weeklyBreakdown.add(weekData);
 
@@ -272,13 +242,6 @@ public class RevenueService {
         try {
             LOGGER.log(Level.INFO, "Getting monthly revenue breakdown for admin: {0}", adminId);
 
-            // Get all parking spaces managed by this admin
-            List<String> parkingIds = parkingSpaceRepository.getAllParkingSpaceIdsByAdminId(adminId);
-
-            if (parkingIds.isEmpty()) {
-                return monthlyBreakdown;
-            }
-
             // Start from the first day of the month of startDate
             LocalDateTime currentMonthStart = startDate.withDayOfMonth(1);
 
@@ -290,24 +253,19 @@ public class RevenueService {
                     monthEnd = endDate;
                 }
 
-                double monthlyRevenue = 0.0;
+                float monthlyRevenue = 0.0F;
                 int reservationCount = 0;
+                int transactionCount = 0;
 
-                // Get payments for this month
-                for (String parkingId : parkingIds) {
-                    // Convert to java.util.Date for getPaymentsByParkingIdAndDateRange
-                    java.util.Date monthStartUtilDate = java.util.Date.from(currentMonthStart.atZone(java.time.ZoneId.systemDefault()).toInstant());
-                    java.util.Date monthEndUtilDate = java.util.Date.from(monthEnd.atZone(java.time.ZoneId.systemDefault()).toInstant());
+                // Get transactions for all parking spaces in this month
+                List<Transaction> monthlyTransactions = transactionService.getTransactionsByAdminIdAndDateRange(adminId, currentMonthStart, monthEnd);
 
-                    List<Payment> payments = paymentRepository.getPaymentsByParkingIdAndDateRange(parkingId, monthStartUtilDate, monthEndUtilDate);
+                for (Transaction transaction : monthlyTransactions) {
+                    monthlyRevenue += transaction.getAmount();
+                    transactionCount++;
 
-                    for (Payment payment : payments) {
-                        monthlyRevenue += payment.getAmount();
-                    }
-
-                    // Get reservations for this month
-                    List<Reservation> reservations = reservationRepository.getReservationsByParkingIdAndDateRange(parkingId, monthStartUtilDate, monthEndUtilDate);
-                    reservationCount += reservations.size();
+                    // Count each transaction as one reservation
+                    reservationCount++;
                 }
 
                 Map<String, Object> monthData = new HashMap<>();
@@ -315,6 +273,7 @@ public class RevenueService {
                 monthData.put("year", currentMonthStart.getYear());
                 monthData.put("revenue", monthlyRevenue);
                 monthData.put("reservationCount", reservationCount);
+                monthData.put("transactionCount", transactionCount);
 
                 monthlyBreakdown.add(monthData);
 
@@ -330,110 +289,6 @@ public class RevenueService {
     }
 
     /**
-     * Get payment method breakdown
-     *
-     * @param adminId Admin ID
-     * @param startDate Start date
-     * @param endDate End date
-     * @return Map of payment methods to amounts
-     */
-    public Map<String, Double> getPaymentMethodBreakdown(int adminId, LocalDateTime startDate, LocalDateTime endDate) {
-        Map<String, Double> methodBreakdown = new HashMap<>();
-        try {
-            LOGGER.log(Level.INFO, "Getting payment method breakdown for admin: {0}", adminId);
-
-            // Get all parking spaces managed by this admin
-            List<String> parkingIds = parkingSpaceRepository.getAllParkingSpaceIdsByAdminId(adminId);
-
-            if (parkingIds.isEmpty()) {
-                return methodBreakdown;
-            }
-
-            // Initialize common payment methods
-            methodBreakdown.put("CARD", 0.0);
-            methodBreakdown.put("BALANCE", 0.0);
-
-            // Process payments for each parking space
-            for (String parkingId : parkingIds) {
-                // Convert to java.util.Date for getPaymentsByParkingIdAndDateRange
-                java.util.Date startUtilDate = java.util.Date.from(startDate.atZone(java.time.ZoneId.systemDefault()).toInstant());
-                java.util.Date endUtilDate = java.util.Date.from(endDate.atZone(java.time.ZoneId.systemDefault()).toInstant());
-
-                List<Payment> payments = paymentRepository.getPaymentsByParkingIdAndDateRange(parkingId, startUtilDate, endUtilDate);
-
-                // Count amounts by payment method
-                for (Payment payment : payments) {
-                    String method = payment.getPaymentMethod();
-                    double amount = payment.getAmount();
-
-                    // Add to existing count or initialize
-                    methodBreakdown.put(method, methodBreakdown.getOrDefault(method, 0.0) + amount);
-                }
-            }
-
-            return methodBreakdown;
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error getting payment method breakdown", e);
-            return methodBreakdown;
-        }
-    }
-
-    /**
-     * Get revenue for a specific parking space
-     *
-     * @param parkingId Parking space ID
-     * @param startDate Start date
-     * @param endDate End date
-     * @return Map containing revenue data
-     */
-    public Map<String, Object> getParkingSpaceRevenue(String parkingId, LocalDateTime startDate, LocalDateTime endDate) {
-        Map<String, Object> revenueData = new HashMap<>();
-        try {
-            LOGGER.log(Level.INFO, "Getting revenue for parking space: {0}", parkingId);
-
-            // Get parking space details
-            ParkingSpace parkingSpace = parkingSpaceRepository.getParkingSpaceById(parkingId);
-            if (parkingSpace == null) {
-                revenueData.put("error", "Parking space not found");
-                return revenueData;
-            }
-
-            // Convert to java.util.Date for getPaymentsByParkingIdAndDateRange
-            java.util.Date startUtilDate = java.util.Date.from(startDate.atZone(java.time.ZoneId.systemDefault()).toInstant());
-            java.util.Date endUtilDate = java.util.Date.from(endDate.atZone(java.time.ZoneId.systemDefault()).toInstant());
-
-            // Get payments for this parking space
-            List<Payment> payments = paymentRepository.getPaymentsByParkingIdAndDateRange(parkingId, startUtilDate, endUtilDate);
-
-            // Calculate total revenue
-            double totalRevenue = 0.0;
-            for (Payment payment : payments) {
-                totalRevenue += payment.getAmount();
-            }
-
-            // Get reservations for this parking space
-            List<Reservation> reservations = reservationRepository.getReservationsByParkingIdAndDateRange(parkingId, startUtilDate, endUtilDate);
-
-            // Calculate average payment amount
-            double avgPaymentAmount = payments.isEmpty() ? 0.0 : totalRevenue / payments.size();
-
-            // Populate data
-            revenueData.put("parkingId", parkingId);
-            revenueData.put("parkingAddress", parkingSpace.getParkingAddress());
-            revenueData.put("totalRevenue", totalRevenue);
-            revenueData.put("reservationCount", reservations.size());
-            revenueData.put("paymentCount", payments.size());
-            revenueData.put("averagePaymentAmount", avgPaymentAmount);
-
-            return revenueData;
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error getting revenue for parking space: " + parkingId, e);
-            revenueData.put("error", "Error getting revenue data: " + e.getMessage());
-            return revenueData;
-        }
-    }
-
-    /**
      * Get parking space utilization rate
      *
      * @param parkingId Parking space ID
@@ -441,20 +296,20 @@ public class RevenueService {
      * @param endDate End date
      * @return Utilization rate (0-100%)
      */
-    public double getParkingSpaceUtilization(String parkingId, LocalDateTime startDate, LocalDateTime endDate) {
+    public float getParkingSpaceUtilization(String parkingId, LocalDateTime startDate, LocalDateTime endDate) {
         try {
             LOGGER.log(Level.INFO, "Getting utilization rate for parking space: {0}", parkingId);
 
             // Get parking space details
             ParkingSpace parkingSpace = parkingSpaceRepository.getParkingSpaceById(parkingId);
             if (parkingSpace == null) {
-                return 0.0;
+                return 0.0F;
             }
 
             // Get total number of slots
             int totalSlots = parkingSpace.getNumberOfSlots();
             if (totalSlots == 0) {
-                return 0.0;
+                return 0.0F;
             }
 
             // Convert to java.util.Date for getReservationsByParkingIdAndDateRange
@@ -467,7 +322,7 @@ public class RevenueService {
             // Calculate total hours in the date range
             long totalHoursInRange = ChronoUnit.HOURS.between(startDate, endDate);
             if (totalHoursInRange <= 0) {
-                return 0.0;
+                return 0.0F;
             }
 
             // Calculate total slot-hours available
@@ -504,10 +359,69 @@ public class RevenueService {
             }
 
             // Calculate utilization rate
-            return (double) reservedSlotHours / totalSlotHours * 100;
+            return (float) reservedSlotHours / totalSlotHours * 100;
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error calculating utilization rate for parking space: " + parkingId, e);
-            return 0.0;
+            return 0.0F;
+        }
+    }
+
+    /**
+     * Get revenue for a specific parking space
+     *
+     * @param parkingId Parking space ID
+     * @param startDate Start date
+     * @param endDate End date
+     * @return Map containing revenue data
+     */
+    public Map<String, Object> getParkingSpaceRevenue(String parkingId, LocalDateTime startDate, LocalDateTime endDate) {
+        Map<String, Object> revenueData = new HashMap<>();
+        try {
+            LOGGER.log(Level.INFO, "Getting revenue for parking space: {0}", parkingId);
+
+            // Get parking space details
+            ParkingSpace parkingSpace = parkingSpaceRepository.getParkingSpaceById(parkingId);
+            if (parkingSpace == null) {
+                revenueData.put("error", "Parking space not found");
+                return revenueData;
+            }
+
+            // Get transactions for this parking space in the date range
+            List<Transaction> transactions = transactionService.getTransactionsByParkingIdAndDateRange(parkingId, startDate, endDate);
+
+            // Calculate total revenue
+            float totalRevenue = 0.0F;
+            for (Transaction transaction : transactions) {
+                totalRevenue += transaction.getAmount();
+            }
+
+            // Get reservations for this parking space
+            java.util.Date startUtilDate = java.util.Date.from(startDate.atZone(java.time.ZoneId.systemDefault()).toInstant());
+            java.util.Date endUtilDate = java.util.Date.from(endDate.atZone(java.time.ZoneId.systemDefault()).toInstant());
+            List<Reservation> reservations = reservationRepository.getReservationsByParkingIdAndDateRange(parkingId, startUtilDate, endUtilDate);
+
+            // Calculate average transaction amount
+            float avgTransactionAmount = (float) (transactions.isEmpty() ? 0.0 : totalRevenue / transactions.size());
+
+            // Calculate utilization rate
+            float utilizationRate = getParkingSpaceUtilization(parkingId, startDate, endDate);
+
+            // Populate data
+            revenueData.put("parkingId", parkingId);
+            revenueData.put("parkingAddress", parkingSpace.getParkingAddress());
+            revenueData.put("totalRevenue", totalRevenue);
+            revenueData.put("reservationCount", reservations.size());
+            revenueData.put("transactionCount", transactions.size());
+            revenueData.put("averageTransactionAmount", avgTransactionAmount);
+            revenueData.put("utilizationRate", utilizationRate);
+            revenueData.put("startDate", startDate);
+            revenueData.put("endDate", endDate);
+
+            return revenueData;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting revenue for parking space: " + parkingId, e);
+            revenueData.put("error", "Error getting revenue data: " + e.getMessage());
+            return revenueData;
         }
     }
 
@@ -537,26 +451,25 @@ public class RevenueService {
                     break;
                 }
 
-                // Convert to java.util.Date for getPaymentsByParkingIdAndDateRange
-                java.util.Date dayStartUtilDate = java.util.Date.from(dayStart.atZone(java.time.ZoneId.systemDefault()).toInstant());
-                java.util.Date dayEndUtilDate = java.util.Date.from(dayEnd.atZone(java.time.ZoneId.systemDefault()).toInstant());
-
-                // Get payments for this day
-                List<Payment> payments = paymentRepository.getPaymentsByParkingIdAndDateRange(parkingId, dayStartUtilDate, dayEndUtilDate);
+                // Get transactions for this day
+                List<Transaction> transactions = transactionService.getTransactionsByParkingIdAndDateRange(parkingId, dayStart, dayEnd);
 
                 // Calculate daily revenue
-                double dailyRevenue = 0.0;
-                for (Payment payment : payments) {
-                    dailyRevenue += payment.getAmount();
+                float dailyRevenue = 0.0F;
+                for (Transaction transaction : transactions) {
+                    dailyRevenue += transaction.getAmount();
                 }
 
-                // Get reservations for this day
+                // Get reservations for this day (for calculating reservation count)
+                java.util.Date dayStartUtilDate = java.util.Date.from(dayStart.atZone(java.time.ZoneId.systemDefault()).toInstant());
+                java.util.Date dayEndUtilDate = java.util.Date.from(dayEnd.atZone(java.time.ZoneId.systemDefault()).toInstant());
                 List<Reservation> reservations = reservationRepository.getReservationsByParkingIdAndDateRange(parkingId, dayStartUtilDate, dayEndUtilDate);
 
                 Map<String, Object> dayData = new HashMap<>();
                 dayData.put("date", dayStart.toLocalDate());
                 dayData.put("revenue", dailyRevenue);
                 dayData.put("reservationCount", reservations.size());
+                dayData.put("transactionCount", transactions.size());
 
                 dailyTrend.add(dayData);
             }
@@ -595,10 +508,6 @@ public class RevenueService {
                 revenueData.put("parkingAddress", parkingSpace.getParkingAddress());
                 revenueData.put("numberOfSlots", parkingSpace.getNumberOfSlots());
 
-                // Calculate utilization rate
-                double utilizationRate = getParkingSpaceUtilization(parkingId, startDate, endDate);
-                revenueData.put("utilizationRate", utilizationRate);
-
                 parkingSpaceRevenue.add(revenueData);
             }
 
@@ -606,6 +515,70 @@ public class RevenueService {
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error getting revenue comparison for admin: " + adminId, e);
             return parkingSpaceRevenue;
+        }
+    }
+
+    /**
+     * Get top performing parking spaces for an admin
+     *
+     * @param adminId Admin ID
+     * @param startDate Start date
+     * @param endDate End date
+     * @param limit Maximum number of results to return
+     * @return List of top performing parking spaces
+     */
+    public List<Map<String, Object>> getTopPerformingParkingSpaces(int adminId, LocalDateTime startDate, LocalDateTime endDate, int limit) {
+        try {
+            LOGGER.log(Level.INFO, "Getting top performing parking spaces for admin: {0}", adminId);
+
+            // Get all parking spaces revenue data
+            List<Map<String, Object>> allSpacesRevenue = getAllParkingSpaceRevenue(adminId, startDate, endDate);
+
+            // Sort by revenue (highest first)
+            allSpacesRevenue.sort((a, b) -> {
+                float revenueA = (float) a.getOrDefault("totalRevenue", 0.0f);
+                float revenueB = (float) b.getOrDefault("totalRevenue", 0.0f);
+                return Float.compare(revenueB, revenueA); // Descending order
+            });
+
+            // Limit the results
+            int resultLimit = Math.min(limit, allSpacesRevenue.size());
+            return allSpacesRevenue.subList(0, resultLimit);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting top performing parking spaces", e);
+            return List.of();
+        }
+    }
+
+    /**
+     * Get underperforming parking spaces for an admin
+     *
+     * @param adminId Admin ID
+     * @param startDate Start date
+     * @param endDate End date
+     * @param utilizationThreshold Threshold below which a parking space is considered underperforming
+     * @return List of underperforming parking spaces
+     */
+    public List<Map<String, Object>> getUnderperformingParkingSpaces(int adminId, LocalDateTime startDate, LocalDateTime endDate, float utilizationThreshold) {
+        try {
+            LOGGER.log(Level.INFO, "Getting underperforming parking spaces for admin: {0}", adminId);
+
+            // Get all parking spaces revenue data
+            List<Map<String, Object>> allSpacesRevenue = getAllParkingSpaceRevenue(adminId, startDate, endDate);
+            List<Map<String, Object>> underperformingSpaces = new ArrayList<>();
+
+            // Filter by utilization rate
+            for (Map<String, Object> space : allSpacesRevenue) {
+                float utilizationRate = (float) space.getOrDefault("utilizationRate", 0.0f);
+                if (utilizationRate < utilizationThreshold) {
+                    underperformingSpaces.add(space);
+                }
+            }
+
+            return underperformingSpaces;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error getting underperforming parking spaces", e);
+            return List.of();
         }
     }
 }

@@ -38,7 +38,7 @@ public class UserRepository {
             pstmt.setString(2, user.getPhone());
             pstmt.setString(3, user.getEmail());
             pstmt.setString(4, user.getPassword());
-            pstmt.setDouble(5, user.getBalance());
+            pstmt.setFloat(5, user.getBalance());
 
             int rowsAffected = pstmt.executeUpdate();
             return rowsAffected > 0;
@@ -62,7 +62,7 @@ public class UserRepository {
             pstmt.setString(2, user.getPhone());
             pstmt.setString(3, user.getEmail());
             pstmt.setString(4, user.getPassword());
-            pstmt.setDouble(5, user.getBalance());
+            pstmt.setFloat(5, user.getBalance());
             pstmt.setInt(6, user.getUserID());
 
             int rowsAffected = pstmt.executeUpdate();
@@ -78,13 +78,13 @@ public class UserRepository {
      * @return true if successful, false otherwise
      * @throws SQLException if a database error occurs
      */
-    public boolean updateBalance(int userId, double amount) throws SQLException {
+    public boolean updateBalance(int userId, float amount) throws SQLException {
         String sql = "UPDATE USER SET Balance = Balance + ? WHERE UserID = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setDouble(1, amount);
+            pstmt.setFloat(1, amount);
             pstmt.setInt(2, userId);
 
             int rowsAffected = pstmt.executeUpdate();
@@ -362,6 +362,41 @@ public class UserRepository {
 
         return null;
     }
+    /**
+     * Get a user by vehicle ID
+     *
+     * @param vehicleID The vehicle ID
+     * @return The user, or null if not found
+     */
+    public User getUserByVehicleID(String vehicleID) {
+        String query = "SELECT u.* FROM USER u " +
+                "JOIN VEHICLE v ON u.UserID = v.UserID " +
+                "WHERE v.VehicleID = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setString(1, vehicleID);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    User user = new User();
+                    user.setUserID(rs.getInt("UserID"));
+                    user.setUserName(rs.getString("UserName"));
+                    user.setPhone(rs.getString("Phone"));
+                    user.setEmail(rs.getString("Email"));
+                    user.setPassword(rs.getString("Password"));
+                    user.setBalance(rs.getFloat("Balance"));
+                    return user;
+                }
+            }
+
+            return null;
+        } catch (SQLException e) {
+            System.err.println("Error getting user by vehicle ID: " + e.getMessage());
+            return null;
+        }
+    }
 
     /**
      * Maps a ResultSet to a User object
@@ -377,7 +412,7 @@ public class UserRepository {
         user.setPhone(rs.getString("Phone"));
         user.setEmail(rs.getString("Email"));
         user.setPassword(rs.getString("Password"));
-        user.setBalance(rs.getDouble("Balance"));
+        user.setBalance(rs.getFloat("Balance"));
         return user;
     }
 }

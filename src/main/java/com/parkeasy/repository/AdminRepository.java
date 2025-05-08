@@ -255,6 +255,42 @@ public class AdminRepository {
 
         return null;
     }
+    /**
+     * Get the admin who owns the parking space containing a specific slot
+     *
+     * @param slotNumber The slot number
+     * @return The admin, or null if not found
+     */
+    public Admin getAdminBySlotNumber(String slotNumber) {
+        String query = "SELECT a.* FROM ADMIN a " +
+                "JOIN PARKING_SPACE ps ON a.AdminID = ps.AdminID " +
+                "JOIN PARKING_SLOT psl ON ps.ParkingID = psl.ParkingID " +
+                "WHERE psl.SlotNumber = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setString(1, slotNumber);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Admin admin = new Admin();
+                    admin.setAdminID(rs.getInt("AdminID"));
+                    admin.setAdminName(rs.getString("AdminName"));
+                    admin.setPhone(rs.getString("Phone"));
+                    admin.setEmail(rs.getString("Email"));
+                    admin.setPassword(rs.getString("Password"));
+                    admin.setBalance(rs.getFloat("Balance"));
+                    return admin;
+                }
+            }
+
+            return null;
+        } catch (SQLException e) {
+            System.err.println("Error getting admin by slot number: " + e.getMessage());
+            return null;
+        }
+    }
 
     /**
      * Maps a ResultSet to an Admin object

@@ -9,17 +9,39 @@ public class Admin {
     private String phone;
     private String email;
     private String password;
+    private float balance; // Added balance field
 
-    public Admin(int adminID, String adminName, String phone, String email, String password) {
+    /**
+     * Constructor with all fields
+     *
+     * @param adminID The admin ID
+     * @param adminName The admin name
+     * @param phone The admin phone number
+     * @param email The admin email
+     * @param password The admin password
+     * @param balance The admin balance
+     */
+    public Admin(int adminID, String adminName, String phone, String email, String password, float balance) {
         this.adminID = adminID;
         this.adminName = adminName;
         this.phone = phone;
         this.email = email;
         this.password = password;
+        this.balance = balance;
     }
 
-    public Admin() {
+    /**
+     * Constructor without balance (for backward compatibility)
+     */
+    public Admin(int adminID, String adminName, String phone, String email, String password) {
+        this(adminID, adminName, phone, email, password, 0.0F);
+    }
 
+    /**
+     * Default no-argument constructor
+     */
+    public Admin() {
+        this.balance = 0.0F; // Initialize balance to 0
     }
 
     public int getAdminID() {
@@ -60,5 +82,34 @@ public class Admin {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    /**
+     * Get the admin's balance
+     *
+     * @return The balance
+     */
+    public float getBalance() {
+        return balance;
+    }
+
+    /**
+     * Set the admin's balance
+     *
+     * @param balance The balance to set
+     */
+    public void setBalance(float balance) {
+        this.balance = balance;
+    }
+
+    @Override
+    public String toString() {
+        return "Admin{" +
+                "adminID=" + adminID +
+                ", adminName='" + adminName + '\'' +
+                ", phone='" + phone + '\'' +
+                ", email='" + email + '\'' +
+                ", balance=" + balance +
+                '}';
     }
 }

@@ -2,7 +2,6 @@ package main.java.com.parkeasy.controller.admin;
 
 import main.java.com.parkeasy.model.Admin;
 import main.java.com.parkeasy.model.ParkingSpace;
-import main.java.com.parkeasy.model.ParkingSlot;
 import main.java.com.parkeasy.service.AdminService;
 import main.java.com.parkeasy.service.ParkingSpaceService;
 import main.java.com.parkeasy.service.ReservationService;
@@ -36,20 +35,6 @@ public class AdminDashboardController {
         this.reservationService = reservationService;
     }
 
-    /**
-     * Get admin profile information
-     *
-     * @param adminId Admin ID
-     * @return Admin profile or null if not found
-     */
-    public Admin getAdminProfile(int adminId) {
-        try {
-            return adminService.getAdminById(adminId);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error retrieving admin profile", e);
-            return null;
-        }
-    }
 
     /**
      * Get all parking spaces managed by an admin
@@ -67,21 +52,6 @@ public class AdminDashboardController {
         }
     }
 
-    /**
-     * Count total parking spaces managed by an admin
-     *
-     * @param adminId Admin ID
-     * @return Count of parking spaces
-     */
-    public int getTotalParkingSpaces(int adminId) {
-        try {
-            List<ParkingSpace> spaces = parkingSpaceService.getAllParkingSpacesByAdminId(adminId);
-            return spaces != null ? spaces.size() : 0;
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error calculating total parking spaces", e);
-            return 0;
-        }
-    }
 
     /**
      * Count total parking slots across all spaces managed by an admin
@@ -104,15 +74,15 @@ public class AdminDashboardController {
      * @param adminId Admin ID
      * @return Daily revenue
      */
-    public double getDailyRevenue(int adminId) {
+    public float getDailyRevenue(int adminId) {
         try {
             LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
             LocalDateTime tomorrow = today.plusDays(1);
             Map<String, Object> stats = adminService.getRevenueStatistics(adminId, today, tomorrow);
-            return (double) stats.getOrDefault("totalRevenue", 0.0);
+            return (float) stats.getOrDefault("totalRevenue", 0.0);
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error calculating daily revenue", e);
-            return 0.0;
+            return 0.0F;
         }
     }
 
@@ -137,19 +107,19 @@ public class AdminDashboardController {
      * @param adminId Admin ID
      * @return Occupancy rate as percentage (0-100)
      */
-    public double getOccupancyRate(int adminId) {
+    public float getOccupancyRate(int adminId) {
         try {
             int totalSlots = getTotalParkingSlots(adminId);
             int occupiedSlots = getTotalOccupiedSlots(adminId);
 
             if (totalSlots > 0) {
-                return ((double) occupiedSlots / totalSlots) * 100;
+                return ((float) occupiedSlots / totalSlots) * 100;
             } else {
-                return 0.0;
+                return 0.0F;
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error calculating occupancy rate", e);
-            return 0.0;
+            return 0.0F;
         }
     }
 
@@ -169,21 +139,6 @@ public class AdminDashboardController {
         }
     }
 
-    /**
-     * Get recent activity for admin dashboard
-     *
-     * @param adminId Admin ID
-     * @param limit Maximum number of activities to return
-     * @return List of recent activities
-     */
-    public List<Map<String, Object>> getRecentActivity(int adminId, int limit) {
-        try {
-            return adminService.getRecentActivityByAdminId(adminId, limit);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error retrieving recent activity", e);
-            return Collections.emptyList();
-        }
-    }
 // Include these methods in the AdminDashboardController class
 
     /**
@@ -200,21 +155,107 @@ public class AdminDashboardController {
             return 0;
         }
     }
+    /**
+     * Calculate weekly revenue for all parking spaces managed by an admin
+     *
+     * @param adminId Admin ID
+     * @return Weekly revenue
+     */
+    public float getWeeklyRevenue(int adminId) {
+        try {
+            // Calculate dates for the current week (starting from Monday)
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime startOfWeek = now.minusDays(now.getDayOfWeek().getValue() - 1)
+                    .withHour(0).withMinute(0).withSecond(0);
+            LocalDateTime endOfWeek = startOfWeek.plusDays(7);
 
+            // Get revenue statistics for the week
+            Map<String, Object> stats = adminService.getRevenueStatistics(adminId, startOfWeek, endOfWeek);
+            return (float) stats.getOrDefault("totalRevenue", 0.0);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error calculating weekly revenue for admin: " + adminId, e);
+            return 0.0F;
+        }
+    }
+
+    /**
+     * Calculate monthly revenue for all parking spaces managed by an admin
+     *
+     * @param adminId Admin ID
+     * @return Monthly revenue
+     */
+    public float getMonthlyRevenue(int adminId) {
+        try {
+            // Calculate dates for the current month
+            LocalDateTime startOfMonth = LocalDateTime.now()
+                    .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+            LocalDateTime endOfMonth = startOfMonth.plusMonths(1);
+
+            // Get revenue statistics for the month
+            Map<String, Object> stats = adminService.getRevenueStatistics(adminId, startOfMonth, endOfMonth);
+            return (float) stats.getOrDefault("totalRevenue", 0.0);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error calculating monthly revenue for admin: " + adminId, e);
+            return 0.0F;
+        }
+    }
+
+    /**
+     * Calculate weekly revenue for a specific parking space
+     *
+     * @param parkingId Parking space ID
+     * @return Weekly revenue
+     */
+    public float getParkingSpaceWeeklyRevenue(String parkingId) {
+        try {
+            // Calculate dates for the current week (starting from Monday)
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime startOfWeek = now.minusDays(now.getDayOfWeek().getValue() - 1)
+                    .withHour(0).withMinute(0).withSecond(0);
+            LocalDateTime endOfWeek = startOfWeek.plusDays(7);
+
+            // Calculate revenue for the parking space for this week
+            return (float) reservationService.calculateRevenueForParkingSpace(parkingId, startOfWeek, endOfWeek);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error calculating weekly revenue for parking space: " + parkingId, e);
+            return 0.0F;
+        }
+    }
+
+    /**
+     * Calculate monthly revenue for a specific parking space
+     *
+     * @param parkingId Parking space ID
+     * @return Monthly revenue
+     */
+    public float getParkingSpaceMonthlyRevenue(String parkingId) {
+        try {
+            // Calculate dates for the current month
+            LocalDateTime startOfMonth = LocalDateTime.now()
+                    .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+            LocalDateTime endOfMonth = startOfMonth.plusMonths(1);
+
+            // Calculate revenue for the parking space for this month
+            return (float) reservationService.calculateRevenueForParkingSpace(parkingId, startOfMonth, endOfMonth);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error calculating monthly revenue for parking space: " + parkingId, e);
+            return 0.0F;
+        }
+    }
     /**
      * Calculate daily revenue for a specific parking space
      *
      * @param parkingId Parking space ID
      * @return Daily revenue
      */
-    public double getParkingSpaceDailyRevenue(String parkingId) {
+    public float getParkingSpaceDailyRevenue(String parkingId) {
         try {
             LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
             LocalDateTime tomorrow = today.plusDays(1);
-            return reservationService.calculateRevenueForParkingSpace(parkingId, today, tomorrow);
+            return (float) reservationService.calculateRevenueForParkingSpace(parkingId, today, tomorrow);
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error calculating daily revenue for parking space: " + parkingId, e);
-            return 0.0;
+            return 0.0F;
         }
     }
 }

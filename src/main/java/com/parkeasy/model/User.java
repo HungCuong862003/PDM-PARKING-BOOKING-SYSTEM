@@ -6,12 +6,12 @@ public class User {
     private String phone;
     private String email;
     private String password;
-    private double balance;
+    private float balance;
 
     /**
      * Fully parameterized constructor
      */
-    public User(int userID, String userName, String phone, String email, String password, double balance) {
+    public User(int userID, String userName, String phone, String email, String password, float balance) {
         this.userID = userID;
         this.userName = userName;
         this.phone = phone;
@@ -24,7 +24,7 @@ public class User {
      * Default constructor
      */
     public User() {
-        this.balance = 0.0; // Default balance to 0
+        this.balance = 0.0F; // Default balance to 0
     }
 
     // ID getters and setters
@@ -70,11 +70,11 @@ public class User {
     }
 
     // Balance getters and setters
-    public double getBalance() {
+    public float getBalance() {
         return balance;
     }
 
-    public void setBalance(double balance) {
+    public void setBalance(float balance) {
         this.balance = balance;
     }
 }

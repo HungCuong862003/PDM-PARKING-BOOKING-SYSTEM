@@ -4,7 +4,6 @@ import main.java.com.parkeasy.model.ParkingSpace;
 import main.java.com.parkeasy.model.Reservation;
 import main.java.com.parkeasy.model.User;
 import main.java.com.parkeasy.model.Vehicle;
-import main.java.com.parkeasy.service.PaymentService;
 import main.java.com.parkeasy.service.ParkingSpaceService;
 import main.java.com.parkeasy.service.ReservationService;
 import main.java.com.parkeasy.service.UserService;
@@ -32,20 +31,18 @@ public class UserDashboardController {
     private final VehicleService vehicleService;
     private final ReservationService reservationService;
     private final ParkingSpaceService parkingSpaceService;
-    private final PaymentService paymentService;
 
     /**
      * Constructor with dependency injection
      */
     public UserDashboardController(UserService userService, VehicleService vehicleService,
                                    ReservationService reservationService,
-                                   ParkingSpaceService parkingSpaceService,
-                                   PaymentService paymentService) {
+                                   ParkingSpaceService parkingSpaceService
+    ) {
         this.userService = userService;
         this.vehicleService = vehicleService;
         this.reservationService = reservationService;
         this.parkingSpaceService = parkingSpaceService;
-        this.paymentService = paymentService;
     }
 
     /**
@@ -75,14 +72,13 @@ public class UserDashboardController {
             summary.put("vehicleCount", vehicles.size());
             summary.put("vehicles", vehicles);
 
-            // Get active reservations
+// Get active reservations
             List<Map<String, Object>> activeReservations = new ArrayList<>();
             for (Vehicle vehicle : vehicles) {
                 List<Reservation> vehicleReservations = reservationService.getReservationsByVehicleId(vehicle.getVehicleID());
 
                 for (Reservation reservation : vehicleReservations) {
-                    if ((reservation.getStatus().equals(Constants.RESERVATION_PENDING) ||
-                            reservation.getStatus().equals(Constants.RESERVATION_PAID)) &&
+                    if (reservation.getStatus().equals(Constants.RESERVATION_PAID) &&
                             isReservationActive(reservation)) {
 
                         Map<String, Object> resDetails = getReservationWithDetails(reservation, vehicle);
@@ -120,9 +116,6 @@ public class UserDashboardController {
             summary.put("currentReservations", currentReservations);
             summary.put("currentReservationCount", currentReservations.size());
 
-            // Get total spent on parking
-            double totalSpent = paymentService.getTotalAmountByUserId(userId);
-            summary.put("totalSpent", totalSpent);
 
             // Get recently used parking spaces
             List<String> recentParkingIds = reservationService.getRecentParkingSpaceIdsForUser(userId, 5);
@@ -137,9 +130,6 @@ public class UserDashboardController {
 
             summary.put("recentParkingSpaces", recentParkingSpaces);
 
-            // Get pending payments
-            int pendingPayments = reservationService.countPendingPaymentReservationsForUser(userId);
-            summary.put("pendingPayments", pendingPayments);
 
             summary.put("success", true);
 
@@ -180,14 +170,6 @@ public class UserDashboardController {
             int totalReservations = reservationService.countTotalReservationsForUser(userId);
             stats.put("totalReservations", totalReservations);
 
-            // Get total spent
-            double totalSpent = paymentService.getTotalAmountByUserId(userId);
-            stats.put("totalSpent", totalSpent);
-
-            // Get this month's spend
-            LocalDateTime firstDayOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
-            double monthlySpend = paymentService.getTotalAmountByUserIdAndDateRange(userId, firstDayOfMonth, LocalDateTime.now());
-            stats.put("monthlySpend", monthlySpend);
 
             return stats;
         } catch (Exception e) {
@@ -199,48 +181,6 @@ public class UserDashboardController {
         }
     }
 
-    /**
-     * Get reservation recommendations based on user history
-     *
-     * @param userId The ID of the user
-     * @return List of recommended parking spaces
-     */
-    public List<ParkingSpace> getRecommendedParkingSpaces(int userId) {
-        try {
-            // Get frequently used parking spaces
-            List<String> frequentParkingIds = reservationService.getFrequentParkingSpaceIdsForUser(userId, 3);
-
-            // Get highest rated parking spaces
-            List<String> highestRatedParkingIds = parkingSpaceService.getHighestRatedParkingSpaceIds(5);
-
-            // Combine and remove duplicates
-            List<String> recommendedIds = new ArrayList<>(frequentParkingIds);
-            for (String id : highestRatedParkingIds) {
-                if (!recommendedIds.contains(id)) {
-                    recommendedIds.add(id);
-                }
-            }
-
-            // Limit to 5 recommendations
-            if (recommendedIds.size() > 5) {
-                recommendedIds = recommendedIds.subList(0, 5);
-            }
-
-            // Get parking space details
-            List<ParkingSpace> recommendations = new ArrayList<>();
-            for (String id : recommendedIds) {
-                ParkingSpace space = parkingSpaceService.getParkingSpaceById(id);
-                if (space != null) {
-                    recommendations.add(space);
-                }
-            }
-
-            return recommendations;
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error getting parking recommendations for user: " + userId, e);
-            return List.of(); // Return empty list on error
-        }
-    }
 
     /**
      * Get recent activity for a user

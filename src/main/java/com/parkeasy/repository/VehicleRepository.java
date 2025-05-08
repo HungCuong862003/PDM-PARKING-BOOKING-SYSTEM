@@ -13,7 +13,7 @@ import java.util.logging.Logger;
  * Repository class for handling vehicle-related database operations
  */
 public class VehicleRepository {
-    private static final Logger LOGGER = Logger.getLogger(VehicleRepository.class.getName());
+    public static final Logger LOGGER = Logger.getLogger(VehicleRepository.class.getName());
     private static final String TABLE_NAME = "VEHICLE"; // Using the table name from schema
 
     /**
@@ -137,7 +137,7 @@ public class VehicleRepository {
      * @return List of vehicles belonging to the user
      * @throws SQLException if a database error occurs
      */
-    public List<Vehicle> getVehiclesByUserId(int userId) throws SQLException {
+    public static List<Vehicle> getVehiclesByUserId(int userId) throws SQLException {
         List<Vehicle> vehicles = new ArrayList<>();
         String sql = "SELECT * FROM " + TABLE_NAME + " WHERE UserID = ?";
         Connection connection = null;

@@ -7,7 +7,6 @@ public class ParkingSpace {
     private String parkingAddress;
     private float costOfParking;
     private int numberOfSlots;
-    private int maxDuration;
     private String description;
     // foreign key
     private int adminID;
@@ -26,17 +25,15 @@ public class ParkingSpace {
      * @param parkingAddress Address or location of the parking space
      * @param costOfParking Cost associated with this parking
      * @param numberOfSlots Total number of parking slots available
-     * @param maxDuration Maximum duration for which a parking slot can be used
      * @param description Additional information about the parking space
      * @param adminID Identifier for the admin who manages this parking space
      */
-    public ParkingSpace(String parkingID, String parkingAddress, float costOfParking, int numberOfSlots,
-                        int maxDuration, String description, int adminID) {
+    public ParkingSpace(String parkingID, String parkingAddress, float costOfParking, int numberOfSlots
+            , String description, int adminID) {
         this.parkingID = parkingID;
         this.parkingAddress = parkingAddress;
         this.costOfParking = costOfParking;
         this.numberOfSlots = numberOfSlots;
-        this.maxDuration = maxDuration;
         this.description = description;
         this.adminID = adminID;
     }
@@ -73,13 +70,6 @@ public class ParkingSpace {
         this.numberOfSlots = numberOfSlots;
     }
 
-    public int getMaxDuration() {
-        return maxDuration;
-    }
-
-    public void setMaxDuration(int maxDuration) {
-        this.maxDuration = maxDuration;
-    }
 
     public String getDescription() {
         return description;
@@ -104,7 +94,6 @@ public class ParkingSpace {
                 ", parkingAddress='" + parkingAddress + '\'' +
                 ", costOfParking=" + costOfParking +
                 ", numberOfSlots=" + numberOfSlots +
-                ", maxDuration=" + maxDuration +
                 ", description='" + description + '\'' +
                 ", adminID=" + adminID +
                 '}';

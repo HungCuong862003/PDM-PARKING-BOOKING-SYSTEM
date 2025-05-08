@@ -41,8 +41,8 @@ public class ParkingSpaceRepository {
             }
         }
 
-        String sql = "INSERT INTO " + TABLE_NAME + " (ParkingID, ParkingAddress, CostOfParking, NumberOfSlots, MaxDuration, Description, AdminID) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO " + TABLE_NAME + " (ParkingID, ParkingAddress, CostOfParking, NumberOfSlots, Description, AdminID) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql,
@@ -52,9 +52,8 @@ public class ParkingSpaceRepository {
             preparedStatement.setString(2, parkingSpace.getParkingAddress());
             preparedStatement.setFloat(3, parkingSpace.getCostOfParking());
             preparedStatement.setInt(4, parkingSpace.getNumberOfSlots());
-            preparedStatement.setObject(5, parkingSpace.getMaxDuration(), java.sql.Types.INTEGER);
-            preparedStatement.setString(6, parkingSpace.getDescription());
-            preparedStatement.setInt(7, parkingSpace.getAdminID());
+            preparedStatement.setString(5, parkingSpace.getDescription()); // Fixed index from 6 to 5
+            preparedStatement.setInt(6, parkingSpace.getAdminID()); // Fixed index from 7 to 6
 
             int affectedRows = preparedStatement.executeUpdate();
 
@@ -79,15 +78,14 @@ public class ParkingSpaceRepository {
      * @return true if update was successful, false otherwise
      */
     public boolean updateParkingSpace(ParkingSpace parkingSpace) {
-        String sql = "UPDATE " + TABLE_NAME + " SET ParkingAddress = ?, CostOfParking = ?, NumberOfSlots = ?, MaxDuration = ?, Description = ? WHERE ParkingID = ?";
+        String sql = "UPDATE " + TABLE_NAME + " SET ParkingAddress = ?, CostOfParking = ?, NumberOfSlots = ?, Description = ? WHERE ParkingID = ?";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setString(1, parkingSpace.getParkingAddress());
             preparedStatement.setFloat(2, parkingSpace.getCostOfParking());
             preparedStatement.setInt(3, parkingSpace.getNumberOfSlots());
-            preparedStatement.setInt(4, parkingSpace.getMaxDuration());
-            preparedStatement.setString(5, parkingSpace.getDescription());
-            preparedStatement.setString(6, parkingSpace.getParkingID());
+            preparedStatement.setString(4, parkingSpace.getDescription()); // Fixed index from 5 to 4
+            preparedStatement.setString(5, parkingSpace.getParkingID()); // Fixed index from 6 to 5
 
             int rowsAffected = preparedStatement.executeUpdate();
             return rowsAffected > 0; // Return true if the update was successful
@@ -104,6 +102,12 @@ public class ParkingSpaceRepository {
      * @return true if successful, false otherwise
      */
     public boolean deleteParkingSpace(String spaceId) {
+        // First check if parking space has active reservations
+        if (hasActiveReservations(spaceId)) {
+            LOGGER.log(Level.WARNING, "Cannot delete parking space with active reservations: " + spaceId);
+            return false;
+        }
+
         String sql = "DELETE FROM " + TABLE_NAME + " WHERE ParkingID = ?";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
@@ -148,9 +152,10 @@ public class ParkingSpaceRepository {
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setString(1, parkingID);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                return extractParkingSpaceFromResultSet(resultSet);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    return extractParkingSpaceFromResultSet(resultSet);
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error getting parking space by ID: " + parkingID, e);
@@ -164,19 +169,7 @@ public class ParkingSpaceRepository {
      * @return List of all parking spaces
      */
     public List<ParkingSpace> getAllParkingSpaces() {
-        String sql = "SELECT * FROM " + TABLE_NAME;
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql);
-             ResultSet resultSet = preparedStatement.executeQuery()) {
-            List<ParkingSpace> parkingSpaces = new ArrayList<>();
-            while (resultSet.next()) {
-                parkingSpaces.add(extractParkingSpaceFromResultSet(resultSet));
-            }
-            return parkingSpaces;
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error getting all parking spaces", e);
-            return new ArrayList<>(); // Return empty list instead of null
-        }
+        return findAll(); // Use the existing findAll method
     }
 
     /**
@@ -190,12 +183,13 @@ public class ParkingSpaceRepository {
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setInt(1, adminID);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            List<ParkingSpace> parkingSpaces = new ArrayList<>();
-            while (resultSet.next()) {
-                parkingSpaces.add(extractParkingSpaceFromResultSet(resultSet));
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                List<ParkingSpace> parkingSpaces = new ArrayList<>();
+                while (resultSet.next()) {
+                    parkingSpaces.add(extractParkingSpaceFromResultSet(resultSet));
+                }
+                return parkingSpaces;
             }
-            return parkingSpaces;
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error getting parking spaces by admin ID: " + adminID, e);
             return new ArrayList<>(); // Return empty list instead of null
@@ -204,6 +198,8 @@ public class ParkingSpaceRepository {
 
     /**
      * Get the parking schedule for a specific day of the week
+     * Note: This method assumes a PARKING_SCHEDULE table exists which is not in the provided schema
+     * This method should be reviewed and updated based on actual requirements
      *
      * @param parkingId The ID of the parking space
      * @param dayOfWeek The day of the week (1-7, where 1 is Sunday)
@@ -216,21 +212,22 @@ public class ParkingSpaceRepository {
             preparedStatement.setString(1, parkingId);
             preparedStatement.setInt(2, dayOfWeek);
 
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                Map<String, Object> schedule = new java.util.HashMap<>();
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    Map<String, Object> schedule = new java.util.HashMap<>();
 
-                // Convert SQL Time to LocalTime
-                java.sql.Time openingSqlTime = resultSet.getTime("OpeningTime");
-                java.sql.Time closingSqlTime = resultSet.getTime("ClosingTime");
+                    // Convert SQL Time to LocalTime
+                    java.sql.Time openingSqlTime = resultSet.getTime("OpeningTime");
+                    java.sql.Time closingSqlTime = resultSet.getTime("ClosingTime");
 
-                java.time.LocalTime openingTime = openingSqlTime.toLocalTime();
-                java.time.LocalTime closingTime = closingSqlTime.toLocalTime();
+                    java.time.LocalTime openingTime = openingSqlTime.toLocalTime();
+                    java.time.LocalTime closingTime = closingSqlTime.toLocalTime();
 
-                schedule.put("openingTime", openingTime);
-                schedule.put("closingTime", closingTime);
+                    schedule.put("openingTime", openingTime);
+                    schedule.put("closingTime", closingTime);
 
-                return schedule;
+                    return schedule;
+                }
             }
             return null; // No schedule found for this day
         } catch (SQLException e) {
@@ -240,15 +237,247 @@ public class ParkingSpaceRepository {
     }
 
     /**
-     * Search for parking spaces by address or description
+     * Search for parking spaces by address or description with MySQL-specific optimization techniques
+     *
+     * @param searchTerm The search term to look for
+     * @param page The page number (0-based) for pagination
+     * @param pageSize The number of results per page
+     * @return List of parking spaces matching the search criteria
+     */
+    public List<ParkingSpace> searchParkingSpaces(String searchTerm, int page, int pageSize) {
+        // 1. Determine if we should use full-text search or regular search
+        // For short search terms or single words, full-text search might be less effective
+        boolean useFullTextSearch = searchTerm.length() > 3 && searchTerm.contains(" ");
+
+        String sql;
+        if (useFullTextSearch) {
+            // Use MySQL's FULLTEXT search for better performance with multi-word queries
+            sql = "SELECT * FROM PARKING_SPACE WHERE " +
+                    "MATCH(ParkingAddress, Description) AGAINST(? IN BOOLEAN MODE) " +
+                    "ORDER BY MATCH(ParkingAddress, Description) AGAINST(? IN BOOLEAN MODE) DESC " +
+                    "LIMIT ? OFFSET ?";
+        } else {
+            // Use regular LIKE for simple queries
+            sql = "SELECT * FROM PARKING_SPACE WHERE " +
+                    "ParkingAddress LIKE ? OR Description LIKE ? " +
+                    "ORDER BY ParkingAddress " +
+                    "LIMIT ? OFFSET ?";
+        }
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
+            if (useFullTextSearch) {
+                // Format search term for boolean mode
+                String formattedSearch = formatSearchTermForFullText(searchTerm);
+                preparedStatement.setString(1, formattedSearch);
+                preparedStatement.setString(2, formattedSearch);
+                preparedStatement.setInt(3, pageSize);
+                preparedStatement.setInt(4, page * pageSize);
+            } else {
+                // Use wildcards for LIKE search
+                String searchPattern = "%" + searchTerm + "%";
+                preparedStatement.setString(1, searchPattern);
+                preparedStatement.setString(2, searchPattern);
+                preparedStatement.setInt(3, pageSize);
+                preparedStatement.setInt(4, page * pageSize);
+            }
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                List<ParkingSpace> parkingSpaces = new ArrayList<>();
+
+                while (resultSet.next()) {
+                    parkingSpaces.add(extractParkingSpaceFromResultSet(resultSet));
+                }
+
+                return parkingSpaces;
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error searching parking spaces: " + searchTerm, e);
+
+            // If full-text search failed, try falling back to regular search
+            if (useFullTextSearch) {
+                LOGGER.info("Falling back to regular search after full-text search failure");
+                return searchParkingSpacesWithLike(searchTerm, page, pageSize);
+            }
+
+            return new ArrayList<>(); // Return empty list if all attempts failed
+        }
+    }
+
+    /**
+     * Search for parking spaces (non-paginated version for backward compatibility)
      *
      * @param searchTerm The search term to look for
      * @return List of parking spaces matching the search criteria
      */
     public List<ParkingSpace> searchParkingSpaces(String searchTerm) {
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE " +
-                "ParkingAddress LIKE ? OR " +
-                "Description LIKE ?";
+        // Call the paginated version with a large page size for backward compatibility
+        return searchParkingSpaces(searchTerm, 0, 100);
+    }
+    /**
+     * Fallback method using LIKE for search when full-text search fails
+     */
+    private List<ParkingSpace> searchParkingSpacesWithLike(String searchTerm, int page, int pageSize) {
+        String sql = "SELECT * FROM PARKING_SPACE WHERE " +
+                "ParkingAddress LIKE ? OR Description LIKE ? " +
+                "ORDER BY ParkingAddress " +
+                "LIMIT ? OFFSET ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
+            String searchPattern = "%" + searchTerm + "%";
+            preparedStatement.setString(1, searchPattern);
+            preparedStatement.setString(2, searchPattern);
+            preparedStatement.setInt(3, pageSize);
+            preparedStatement.setInt(4, page * pageSize);
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                List<ParkingSpace> parkingSpaces = new ArrayList<>();
+
+                while (resultSet.next()) {
+                    parkingSpaces.add(extractParkingSpaceFromResultSet(resultSet));
+                }
+
+                return parkingSpaces;
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error in fallback search: " + searchTerm, e);
+            return new ArrayList<>();
+        }
+    }
+    /**
+     * Format search term for MySQL full-text search
+     */
+    private String formatSearchTermForFullText(String searchTerm) {
+        // Split the search term into words
+        String[] words = searchTerm.trim().split("\\s+");
+        StringBuilder formatted = new StringBuilder();
+
+        for (String word : words) {
+            // Skip very short words as they might cause performance issues
+            if (word.length() <= 2) {
+                continue;
+            }
+
+            // Add + for required matches and * for prefix matching
+            if (formatted.length() > 0) {
+                formatted.append(" ");
+            }
+            formatted.append("+").append(word).append("*");
+        }
+
+        return formatted.toString();
+    }
+
+    /**
+     * Create the necessary indexes for optimizing search operations
+     * This should be run during application setup/initialization
+     */
+    public void createSearchIndexes() {
+        // Check if fulltext index already exists to avoid errors
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement checkStatement = connection.prepareStatement(
+                     "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS " +
+                             "WHERE table_schema = DATABASE() " +
+                             "AND table_name = 'PARKING_SPACE' " +
+                             "AND index_name = 'ft_parking_search'")) {
+
+            ResultSet rs = checkStatement.executeQuery();
+            boolean fulltextExists = false;
+            if (rs.next()) {
+                fulltextExists = rs.getInt(1) > 0;
+            }
+
+            // Create MySQL fulltext index if it doesn't exist
+            if (!fulltextExists) {
+                try (PreparedStatement ftStatement = connection.prepareStatement(
+                        "ALTER TABLE PARKING_SPACE " +
+                                "ADD FULLTEXT INDEX ft_parking_search(ParkingAddress, Description)")) {
+                    ftStatement.execute();
+                    LOGGER.info("Created full-text search index on PARKING_SPACE table");
+                } catch (SQLException e) {
+                    LOGGER.log(Level.WARNING, "Could not create fulltext index. Search will use regular indexes.", e);
+
+                    // If creating fulltext index fails, create regular indexes
+                    String[] regularIndexes = {
+                            "CREATE INDEX IF NOT EXISTS idx_parking_address ON PARKING_SPACE (ParkingAddress(100))",
+                            "CREATE INDEX IF NOT EXISTS idx_parking_description ON PARKING_SPACE (Description(100))"
+                    };
+
+                    for (String indexSql : regularIndexes) {
+                        try (PreparedStatement indexStatement = connection.prepareStatement(indexSql)) {
+                            indexStatement.execute();
+                            LOGGER.info("Created index: " + indexSql);
+                        } catch (SQLException indexEx) {
+                            LOGGER.log(Level.SEVERE, "Error creating index: " + indexSql, indexEx);
+                        }
+                    }
+                }
+            } else {
+                LOGGER.info("Full-text search index already exists on PARKING_SPACE table");
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error checking or creating indexes", e);
+        }
+    }
+
+    /**
+     * Count total number of results for a search query (for pagination)
+     * This method supports both full-text and LIKE search depending on the search term
+     *
+     * @param searchTerm The search term to look for
+     * @return Total count of matching parking spaces
+     */
+    public int countSearchResults(String searchTerm) {
+        // Determine if we should use full-text search
+        boolean useFullTextSearch = searchTerm.length() > 3 && searchTerm.contains(" ");
+
+        String sql;
+        if (useFullTextSearch) {
+            sql = "SELECT COUNT(*) FROM PARKING_SPACE WHERE " +
+                    "MATCH(ParkingAddress, Description) AGAINST(? IN BOOLEAN MODE)";
+        } else {
+            sql = "SELECT COUNT(*) FROM PARKING_SPACE WHERE " +
+                    "ParkingAddress LIKE ? OR Description LIKE ?";
+        }
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
+            if (useFullTextSearch) {
+                preparedStatement.setString(1, formatSearchTermForFullText(searchTerm));
+            } else {
+                String searchPattern = "%" + searchTerm + "%";
+                preparedStatement.setString(1, searchPattern);
+                preparedStatement.setString(2, searchPattern);
+            }
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1);
+                }
+                return 0;
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error counting search results: " + searchTerm, e);
+
+            // If full-text search failed, try falling back to regular count
+            if (useFullTextSearch) {
+                return countWithLike(searchTerm);
+            }
+
+            return 0;
+        }
+    }
+
+    /**
+     * Fallback method to count results using LIKE
+     */
+    private int countWithLike(String searchTerm) {
+        String sql = "SELECT COUNT(*) FROM PARKING_SPACE WHERE " +
+                "ParkingAddress LIKE ? OR Description LIKE ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
@@ -257,17 +486,15 @@ public class ParkingSpaceRepository {
             preparedStatement.setString(1, searchPattern);
             preparedStatement.setString(2, searchPattern);
 
-            ResultSet resultSet = preparedStatement.executeQuery();
-            List<ParkingSpace> parkingSpaces = new ArrayList<>();
-
-            while (resultSet.next()) {
-                parkingSpaces.add(extractParkingSpaceFromResultSet(resultSet));
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1);
+                }
+                return 0;
             }
-
-            return parkingSpaces;
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error searching parking spaces: " + searchTerm, e);
-            return new ArrayList<>(); // Return empty list instead of null
+            LOGGER.log(Level.SEVERE, "Error in fallback count: " + searchTerm, e);
+            return 0;
         }
     }
 
@@ -282,9 +509,10 @@ public class ParkingSpaceRepository {
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setString(1, parkingId);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                return resultSet.getInt(1) > 0;
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1) > 0;
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error checking if parking space exists: " + parkingId, e);
@@ -300,28 +528,20 @@ public class ParkingSpaceRepository {
      * @return true if the slot belongs to the parking space, false otherwise
      */
     public boolean isSlotInParkingSpace(String slotNumber, String parkingId) {
-        String sql = "SELECT COUNT(*) FROM parkingslot WHERE SlotNumber = ? AND ParkingID = ?";
+        String sql = "SELECT COUNT(*) FROM PARKING_SLOT WHERE SlotNumber = ? AND ParkingID = ?";
 
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        ResultSet resultSet = null;
-
-        try {
-            connection = DatabaseConnection.getConnection();
-            preparedStatement = connection.prepareStatement(sql);
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setString(1, slotNumber);
             preparedStatement.setString(2, parkingId);
 
-            resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                return resultSet.getInt(1) > 0;
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1) > 0;
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error checking if slot is in parking space", e);
-        } finally {
-            DatabaseConnection.closeResultSet(resultSet);
-            DatabaseConnection.closeStatement(preparedStatement);
-            DatabaseConnection.closeConnection(connection);
         }
 
         return false;
@@ -335,27 +555,19 @@ public class ParkingSpaceRepository {
      */
     public List<String> getAllParkingSpaceIdsByAdminId(int adminId) {
         String sql = "SELECT ParkingID FROM " + TABLE_NAME + " WHERE AdminID = ?";
-
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        ResultSet resultSet = null;
         List<String> parkingIds = new ArrayList<>();
 
-        try {
-            connection = DatabaseConnection.getConnection();
-            preparedStatement = connection.prepareStatement(sql);
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setInt(1, adminId);
 
-            resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                parkingIds.add(resultSet.getString("ParkingID"));
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    parkingIds.add(resultSet.getString("ParkingID"));
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error getting parking space IDs by admin ID: " + adminId, e);
-        } finally {
-            DatabaseConnection.closeResultSet(resultSet);
-            DatabaseConnection.closeStatement(preparedStatement);
-            DatabaseConnection.closeConnection(connection);
         }
 
         return parkingIds;
@@ -368,31 +580,7 @@ public class ParkingSpaceRepository {
      * @return List of parking spaces managed by the admin
      */
     public List<ParkingSpace> getAllParkingSpacesByAdminId(int adminId) {
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE AdminID = ?";
-
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        ResultSet resultSet = null;
-        List<ParkingSpace> parkingSpaces = new ArrayList<>();
-
-        try {
-            connection = DatabaseConnection.getConnection();
-            preparedStatement = connection.prepareStatement(sql);
-            preparedStatement.setInt(1, adminId);
-
-            resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                parkingSpaces.add(extractParkingSpaceFromResultSet(resultSet));
-            }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error getting parking spaces by admin ID: " + adminId, e);
-        } finally {
-            DatabaseConnection.closeResultSet(resultSet);
-            DatabaseConnection.closeStatement(preparedStatement);
-            DatabaseConnection.closeConnection(connection);
-        }
-
-        return parkingSpaces;
+        return getParkingSpacesByAdminId(adminId); // Use the existing method
     }
 
     /**
@@ -404,28 +592,98 @@ public class ParkingSpaceRepository {
     public int getAdminIdByParkingId(String parkingId) {
         String sql = "SELECT AdminID FROM " + TABLE_NAME + " WHERE ParkingID = ?";
 
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        ResultSet resultSet = null;
-
-        try {
-            connection = DatabaseConnection.getConnection();
-            preparedStatement = connection.prepareStatement(sql);
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setString(1, parkingId);
 
-            resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                return resultSet.getInt("AdminID");
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("AdminID");
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error getting admin ID by parking ID: " + parkingId, e);
-        } finally {
-            DatabaseConnection.closeResultSet(resultSet);
-            DatabaseConnection.closeStatement(preparedStatement);
-            DatabaseConnection.closeConnection(connection);
         }
 
         return -1;
+    }
+
+    /**
+     * Check if a parking space has any active reservations
+     *
+     * @param parkingId The ID of the parking space
+     * @return true if there are active reservations, false otherwise
+     */
+    public boolean hasActiveReservations(String parkingId) {
+        String sql = "SELECT COUNT(*) FROM PARKING_RESERVATION r " +
+                "JOIN PARKING_SLOT s ON r.SlotNumber = s.SlotNumber " +
+                "WHERE s.ParkingID = ? AND r.Status = 'ACTIVE'";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingId);
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error checking active reservations for parking space: " + parkingId, e);
+        }
+
+        return false;
+    }
+
+    /**
+     * Get available slots for a specific parking space
+     *
+     * @param parkingId The ID of the parking space
+     * @return List of available slot numbers
+     */
+    public List<String> getAvailableSlots(String parkingId) {
+        String sql = "SELECT SlotNumber FROM PARKING_SLOT WHERE ParkingID = ? AND Availability = true";
+        List<String> availableSlots = new ArrayList<>();
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingId);
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    availableSlots.add(resultSet.getString("SlotNumber"));
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting available slots for parking space: " + parkingId, e);
+        }
+
+        return availableSlots;
+    }
+
+    /**
+     * Get the number of available slots for a specific parking space
+     *
+     * @param parkingId The ID of the parking space
+     * @return Number of available slots
+     */
+    public int getAvailableSlotsCount(String parkingId) {
+        String sql = "SELECT COUNT(*) FROM PARKING_SLOT WHERE ParkingID = ? AND Availability = true";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingId);
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting available slots count for parking space: " + parkingId, e);
+        }
+
+        return 0;
     }
 
     /**
@@ -441,7 +699,6 @@ public class ParkingSpaceRepository {
                 resultSet.getString("ParkingAddress"),
                 resultSet.getFloat("CostOfParking"),
                 resultSet.getInt("NumberOfSlots"),
-                resultSet.getInt("MaxDuration"),
                 resultSet.getString("Description"),
                 resultSet.getInt("AdminID")
         );

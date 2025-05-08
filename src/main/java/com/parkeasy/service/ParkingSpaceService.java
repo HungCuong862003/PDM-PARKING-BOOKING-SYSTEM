@@ -3,19 +3,19 @@ package main.java.com.parkeasy.service;
 import main.java.com.parkeasy.model.ParkingSlot;
 import main.java.com.parkeasy.model.ParkingSpace;
 import main.java.com.parkeasy.model.ParkingReview;
-import main.java.com.parkeasy.model.ParkingSchedule;
 import main.java.com.parkeasy.repository.ParkingSlotRepository;
 import main.java.com.parkeasy.repository.ParkingSpaceRepository;
 import main.java.com.parkeasy.repository.ParkingReviewRepository;
-import main.java.com.parkeasy.repository.ParkingScheduleRepository;
 import main.java.com.parkeasy.repository.ReservationRepository;
+import main.java.com.parkeasy.util.DatabaseConnection;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -31,7 +31,6 @@ public class ParkingSpaceService {
     private final ParkingSpaceRepository parkingSpaceRepository;
     private final ParkingSlotRepository parkingSlotRepository;
     private final ParkingReviewRepository parkingReviewRepository;
-    private final ParkingScheduleRepository parkingScheduleRepository;
     private final ReservationRepository reservationRepository;
 
     /**
@@ -40,12 +39,10 @@ public class ParkingSpaceService {
     public ParkingSpaceService(ParkingSpaceRepository parkingSpaceRepository,
                                ParkingSlotRepository parkingSlotRepository,
                                ParkingReviewRepository parkingReviewRepository,
-                               ParkingScheduleRepository parkingScheduleRepository,
                                ReservationRepository reservationRepository) {
         this.parkingSpaceRepository = parkingSpaceRepository;
         this.parkingSlotRepository = parkingSlotRepository;
         this.parkingReviewRepository = parkingReviewRepository;
-        this.parkingScheduleRepository = parkingScheduleRepository;
         this.reservationRepository = reservationRepository;
     }
 
@@ -56,8 +53,19 @@ public class ParkingSpaceService {
         this.parkingSpaceRepository = new ParkingSpaceRepository();
         this.parkingSlotRepository = new ParkingSlotRepository();
         this.parkingReviewRepository = new ParkingReviewRepository();
-        this.parkingScheduleRepository = new ParkingScheduleRepository();
         this.reservationRepository = new ReservationRepository();
+    }
+    /**
+     * Initialize search functionality - call this during application startup
+     */
+    public void initializeSearch() {
+        try {
+            LOGGER.log(Level.INFO, "Initializing search indexes");
+            parkingSpaceRepository.createSearchIndexes();
+            LOGGER.log(Level.INFO, "Search indexes initialized successfully");
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error initializing search indexes", e);
+        }
     }
 
     /**
@@ -91,21 +99,6 @@ public class ParkingSpaceService {
         }
     }
 
-    /**
-     * Search for parking spaces by address or description
-     *
-     * @param searchTerm The search term
-     * @return List of matching parking spaces
-     */
-    public List<ParkingSpace> searchParkingSpaces(String searchTerm) {
-        try {
-            LOGGER.log(Level.INFO, "Searching parking spaces with term: {0}", searchTerm);
-            return parkingSpaceRepository.searchParkingSpaces(searchTerm);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error searching parking spaces", e);
-            return new ArrayList<>();
-        }
-    }
 
     /**
      * Get all parking spaces managed by an admin
@@ -173,11 +166,6 @@ public class ParkingSpaceService {
             List<ParkingSlot> allSlots = parkingSlotRepository.getParkingSlotsByParkingSpaceId(parkingId);
             List<ParkingSlot> availableSlots = new ArrayList<>();
 
-            // Check if parking space is open during the requested time
-            if (!isParkingSpaceOpenAt(parkingId, startDateTime) || !isParkingSpaceOpenAt(parkingId, endDateTime)) {
-                LOGGER.log(Level.INFO, "Parking space is not open during the requested time range");
-                return availableSlots;
-            }
 
             // Check each slot for availability during the time range
             for (ParkingSlot slot : allSlots) {
@@ -292,45 +280,6 @@ public class ParkingSpaceService {
         }
     }
 
-    /**
-     * Check if a parking space is open at a specific time
-     *
-     * @param parkingId The ID of the parking space
-     * @param dateTime The date and time to check
-     * @return true if open, false otherwise
-     */
-    public boolean isParkingSpaceOpenAt(String parkingId, LocalDateTime dateTime) {
-        try {
-            LOGGER.log(Level.INFO, "Checking if parking space {0} is open at {1}", new Object[]{parkingId, dateTime});
-
-            // Get the day of week (1-7, with 1 being Sunday)
-            int dayOfWeek = dateTime.getDayOfWeek().getValue();
-            // Adjust to match our database convention (1 = Sunday, 7 = Saturday)
-            if (dayOfWeek == 7) {
-                dayOfWeek = 1; // Sunday
-            } else {
-                dayOfWeek += 1; // Other days
-            }
-
-            // Get schedule for this day
-            Map<String, Object> schedule = parkingSpaceRepository.getParkingScheduleForDay(parkingId, dayOfWeek);
-
-            if (schedule == null) {
-                // No schedule found for this day, assume closed
-                return false;
-            }
-
-            LocalTime openingTime = (LocalTime) schedule.get("openingTime");
-            LocalTime closingTime = (LocalTime) schedule.get("closingTime");
-            LocalTime currentTime = dateTime.toLocalTime();
-
-            // Check if current time is within opening hours
-            return !currentTime.isBefore(openingTime) && !currentTime.isAfter(closingTime);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error checking if parking space is open", e);
-            return false;
-        }
-    }
 
     /**
      * Get reviews for a parking space
@@ -354,13 +303,13 @@ public class ParkingSpaceService {
      * @param parkingId The ID of the parking space
      * @return Average rating (0-5)
      */
-    public double getAverageRatingForParkingSpace(String parkingId) {
+    public float getAverageRatingForParkingSpace(String parkingId) {
         try {
             LOGGER.log(Level.INFO, "Calculating average rating for parking space: {0}", parkingId);
             return parkingReviewRepository.getAverageRatingForParkingSpace(parkingId);
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error calculating average rating for parking space", e);
-            return 0.0;
+            return 0.0F;
         }
     }
 
@@ -378,16 +327,16 @@ public class ParkingSpaceService {
             List<ParkingSpace> allSpaces = parkingSpaceRepository.getAllParkingSpaces();
 
             // Calculate average rating for each space
-            List<Map.Entry<ParkingSpace, Double>> spacesWithRatings = new ArrayList<>();
+            List<Map.Entry<ParkingSpace, Float>> spacesWithRatings = new ArrayList<>();
 
             for (ParkingSpace space : allSpaces) {
-                double avgRating = getAverageRatingForParkingSpace(space.getParkingID());
+                float avgRating = getAverageRatingForParkingSpace(space.getParkingID());
                 spacesWithRatings.add(Map.entry(space, avgRating));
             }
 
             // Sort by rating (highest first) and get top spaces
             return spacesWithRatings.stream()
-                    .sorted(Map.Entry.<ParkingSpace, Double>comparingByValue().reversed())
+                    .sorted(Map.Entry.<ParkingSpace, Float>comparingByValue().reversed())
                     .limit(limit)
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
@@ -509,18 +458,220 @@ public class ParkingSpaceService {
      * @throws SQLException If database error occurs
      */
     public int getOccupiedSlotCountByParkingId(String parkingId) throws SQLException {
-        // Example implementation - in a real application, this would query the database
-        // Count slots that are currently occupied (status = 'OCCUPIED')
-        try {
-            // Query database for occupied slots in this parking space
-            // This is a mockup - implement actual database query in production
-            String query = "SELECT COUNT(*) FROM parking_slots WHERE parking_id = ? AND status = 'OCCUPIED'";
+        // The query is changed to count slots where availability = 0
+        // because in your database, 1 means available and 0 means occupied
+        String query = "SELECT COUNT(*) FROM parking_slot WHERE ParkingID = ? AND Availability = 0";
 
-            // For this example, we'll return a default value
-            // In a real implementation, execute the query and return the actual count
-            return 0; // Return 0 for now - replace with actual implementation
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setString(1, parkingId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+                return 0;
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting occupied slot count for parking ID: " + parkingId, e);
+            throw e;
+        }
+    }
+    /**
+     * Add a new parking space
+     *
+     * @param parkingSpace The parking space to add
+     * @return true if successful, false otherwise
+     */
+    public boolean addParkingSpace(ParkingSpace parkingSpace) {
+        try {
+            LOGGER.log(Level.INFO, "Adding new parking space with ID: {0}", parkingSpace.getParkingID());
+
+            // Validate the parking space
+            if (parkingSpace.getParkingID() == null || parkingSpace.getParkingID().trim().isEmpty()) {
+                LOGGER.log(Level.WARNING, "Cannot add parking space with null or empty ID");
+                return false;
+            }
+
+            if (parkingSpace.getParkingAddress() == null || parkingSpace.getParkingAddress().trim().isEmpty()) {
+                LOGGER.log(Level.WARNING, "Cannot add parking space with null or empty address");
+                return false;
+            }
+
+            if (parkingSpace.getNumberOfSlots() <= 0) {
+                LOGGER.log(Level.WARNING, "Cannot add parking space with invalid number of slots: {0}",
+                        parkingSpace.getNumberOfSlots());
+                return false;
+            }
+
+            // Check if parking space with same ID already exists
+            ParkingSpace existingSpace = parkingSpaceRepository.getParkingSpaceById(parkingSpace.getParkingID());
+            if (existingSpace != null) {
+                LOGGER.log(Level.WARNING, "Parking space with ID {0} already exists", parkingSpace.getParkingID());
+                return false;
+            }
+
+            // Add the parking space - repository returns the generated ID
+            int generatedId = parkingSpaceRepository.addParkingSpace(parkingSpace);
+
+            // Consider operation successful if we got a valid ID
+            boolean success = (generatedId > 0);
+
+            if (success) {
+                LOGGER.log(Level.INFO, "Successfully added parking space with ID: {0}, generated ID: {1}",
+                        new Object[]{parkingSpace.getParkingID(), generatedId});
+            } else {
+                LOGGER.log(Level.WARNING, "Failed to add parking space with ID: {0}", parkingSpace.getParkingID());
+            }
+
+            return success;
         } catch (Exception e) {
-            throw new SQLException("Error getting occupied slot count: " + e.getMessage(), e);
+            LOGGER.log(Level.SEVERE, "Error adding parking space", e);
+            return false;
+        }
+    }
+    /**
+     * Delete a parking space by ID
+     *
+     * @param parkingId The ID of the parking space to delete
+     * @return true if successful, false otherwise
+     */
+    public boolean deleteParkingSpace(String parkingId) {
+        try {
+            LOGGER.log(Level.INFO, "Deleting parking space with ID: {0}", parkingId);
+
+            // First check if the parking space exists
+            ParkingSpace existingSpace = parkingSpaceRepository.getParkingSpaceById(parkingId);
+            if (existingSpace == null) {
+                LOGGER.log(Level.WARNING, "Cannot delete non-existent parking space with ID: {0}", parkingId);
+                return false;
+            }
+
+            // Check if there are any active reservations
+            boolean hasActiveReservations = parkingSpaceRepository.hasActiveReservations(parkingId);
+            if (hasActiveReservations) {
+                LOGGER.log(Level.WARNING, "Cannot delete parking space with ID {0} because it has active reservations",
+                        parkingId);
+                return false;
+            }
+
+            // Delete all associated parking slots first
+            List<ParkingSlot> slots = parkingSlotRepository.getParkingSlotsByParkingSpaceId(parkingId);
+            for (ParkingSlot slot : slots) {
+                parkingSlotRepository.deleteParkingSlot(slot.getSlotNumber());
+            }
+
+            // Now delete the parking space
+            boolean success = parkingSpaceRepository.deleteParkingSpace(parkingId);
+
+            if (success) {
+                LOGGER.log(Level.INFO, "Successfully deleted parking space with ID: {0}", parkingId);
+            } else {
+                LOGGER.log(Level.WARNING, "Failed to delete parking space with ID: {0}", parkingId);
+            }
+
+            return success;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error deleting parking space", e);
+            return false;
+        }
+    }
+
+    /**
+     * Update an existing parking space
+     *
+     * @param parkingSpace The parking space with updated information
+     * @return true if successful, false otherwise
+     */
+    public boolean updateParkingSpace(ParkingSpace parkingSpace) {
+        try {
+            LOGGER.log(Level.INFO, "Updating parking space with ID: {0}", parkingSpace.getParkingID());
+
+            // Validate the parking space
+            if (parkingSpace.getParkingID() == null || parkingSpace.getParkingID().trim().isEmpty()) {
+                LOGGER.log(Level.WARNING, "Cannot update parking space with null or empty ID");
+                return false;
+            }
+
+            if (parkingSpace.getParkingAddress() == null || parkingSpace.getParkingAddress().trim().isEmpty()) {
+                LOGGER.log(Level.WARNING, "Cannot update parking space with null or empty address");
+                return false;
+            }
+
+            // First check if the parking space exists
+            ParkingSpace existingSpace = parkingSpaceRepository.getParkingSpaceById(parkingSpace.getParkingID());
+            if (existingSpace == null) {
+                LOGGER.log(Level.WARNING, "Cannot update non-existent parking space with ID: {0}",
+                        parkingSpace.getParkingID());
+                return false;
+            }
+
+            // Update the parking space
+            boolean success = parkingSpaceRepository.updateParkingSpace(parkingSpace);
+
+            if (success) {
+                LOGGER.log(Level.INFO, "Successfully updated parking space with ID: {0}", parkingSpace.getParkingID());
+            } else {
+                LOGGER.log(Level.WARNING, "Failed to update parking space with ID: {0}", parkingSpace.getParkingID());
+            }
+
+            return success;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error updating parking space", e);
+            return false;
+        }
+    }
+    /**
+     * Search for parking spaces by address or description
+     * This method provides backward compatibility with existing code
+     *
+     * @param searchTerm The search term
+     * @return List of matching parking spaces
+     */
+    public List<ParkingSpace> searchParkingSpaces(String searchTerm) {
+        try {
+            LOGGER.log(Level.INFO, "Searching parking spaces with term: {0}", searchTerm);
+            // Use the default first page with a reasonably large page size
+            return searchParkingSpaces(searchTerm, 0, 100);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error searching parking spaces", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Search for parking spaces by address or description with pagination
+     *
+     * @param searchTerm The search term
+     * @param page The page number (0-based)
+     * @param pageSize The number of results per page
+     * @return List of matching parking spaces
+     */
+    public List<ParkingSpace> searchParkingSpaces(String searchTerm, int page, int pageSize) {
+        try {
+            LOGGER.log(Level.INFO, "Searching parking spaces with term: {0}, page: {1}, pageSize: {2}",
+                    new Object[]{searchTerm, page, pageSize});
+            return parkingSpaceRepository.searchParkingSpaces(searchTerm, page, pageSize);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error searching parking spaces with pagination", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Get the total count of search results for pagination
+     *
+     * @param searchTerm The search term
+     * @return Total count of matching parking spaces
+     */
+    public int countSearchResults(String searchTerm) {
+        try {
+            LOGGER.log(Level.INFO, "Counting search results for term: {0}", searchTerm);
+            return parkingSpaceRepository.countSearchResults(searchTerm);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error counting search results", e);
+            return 0;
         }
     }
 }

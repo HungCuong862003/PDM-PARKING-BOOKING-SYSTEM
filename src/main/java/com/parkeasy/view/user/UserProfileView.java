@@ -1,6 +1,5 @@
 package main.java.com.parkeasy.view.user;
 
-import main.java.com.parkeasy.controller.user.UserProfileController;
 import main.java.com.parkeasy.model.User;
 import main.java.com.parkeasy.service.UserService;
 import main.java.com.parkeasy.service.VehicleService;
@@ -14,12 +13,9 @@ import java.util.Map;
 /**
  * Profile view for regular users
  * Allows users to update their account information
- * With centered layout and scrolling capability
+ * Design synced with AdminProfileView
  */
 public class UserProfileView extends JFrame {
-    private User currentUser;
-    private UserProfileController userProfileController;
-
     private JTextField nameField;
     private JTextField emailField;
     private JTextField phoneField;
@@ -34,15 +30,16 @@ public class UserProfileView extends JFrame {
     private JButton addFundsButton;
     private JButton backButton;
 
-    private JTabbedPane tabbedPane;
+    private UserService userService;
+    private VehicleService vehicleService;
+    private User currentUser;
 
     public UserProfileView(User user) {
         this.currentUser = user;
 
-        // Initialize services and controller
-        UserService userService = new UserService();
-        VehicleService vehicleService = new VehicleService();
-        userProfileController = new UserProfileController(userService, vehicleService);
+        // Initialize services
+        userService = new UserService();
+        vehicleService = new VehicleService();
 
         // Set up the frame
         setTitle("ParkEasy - User Profile");
@@ -56,73 +53,118 @@ public class UserProfileView extends JFrame {
         // Layout the components
         layoutComponents();
 
+        // Load user data
+        loadUserData();
+
         // Make the frame visible
         setVisible(true);
     }
 
     private void initComponents() {
-        nameField = new JTextField(currentUser.getUserName(), 20);
-        emailField = new JTextField(currentUser.getEmail(), 20);
-        phoneField = new JTextField(currentUser.getPhone(), 20);
-
+        nameField = new JTextField(20);
+        emailField = new JTextField(20);
+        phoneField = new JTextField(20);
         currentPasswordField = new JPasswordField(20);
         newPasswordField = new JPasswordField(20);
         confirmPasswordField = new JPasswordField(20);
-
         amountField = new JTextField(20);
-        addFundsButton = new JButton("Add Funds");
+        balanceLabel = new JLabel();
 
         updateProfileButton = new JButton("Update Profile");
         changePasswordButton = new JButton("Change Password");
+        addFundsButton = new JButton("Add Funds");
         backButton = new JButton("Back to Dashboard");
 
         // Add action listeners
-        updateProfileButton.addActionListener(e -> updateProfile());
-        changePasswordButton.addActionListener(e -> changePassword());
-        addFundsButton.addActionListener(e -> addFunds());
-        backButton.addActionListener(e -> dispose());
+        updateProfileButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updateProfile();
+            }
+        });
 
-        tabbedPane = new JTabbedPane();
+        changePasswordButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                changePassword();
+            }
+        });
+
+        addFundsButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                addFunds();
+            }
+        });
+
+        backButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                dispose(); // Close the profile window
+            }
+        });
     }
 
     private void layoutComponents() {
         setLayout(new BorderLayout(10, 10));
 
+        // Create the main panel with tabs
+        JTabbedPane tabbedPane = new JTabbedPane();
+
         // Profile panel
-        JPanel profilePanel = new JPanel(new GridBagLayout());
+        JPanel profilePanel = new JPanel();
+        profilePanel.setLayout(new BorderLayout(10, 10));
+
+        JPanel formPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
-        // Name field
+        // User ID (non-editable)
         gbc.gridx = 0;
         gbc.gridy = 0;
-        profilePanel.add(new JLabel("Name:"), gbc);
+        formPanel.add(new JLabel("User ID:"), gbc);
 
         gbc.gridx = 1;
-        profilePanel.add(nameField, gbc);
+        gbc.gridy = 0;
+        JTextField idField = new JTextField(String.valueOf(currentUser.getUserID()), 20);
+        idField.setEditable(false);
+        formPanel.add(idField, gbc);
+
+        // Name field
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        formPanel.add(new JLabel("Name:"), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        formPanel.add(nameField, gbc);
 
         // Email field
         gbc.gridx = 0;
-        gbc.gridy = 1;
-        profilePanel.add(new JLabel("Email:"), gbc);
+        gbc.gridy = 2;
+        formPanel.add(new JLabel("Email:"), gbc);
 
         gbc.gridx = 1;
-        profilePanel.add(emailField, gbc);
+        gbc.gridy = 2;
+        formPanel.add(emailField, gbc);
 
         // Phone field
         gbc.gridx = 0;
-        gbc.gridy = 2;
-        profilePanel.add(new JLabel("Phone:"), gbc);
+        gbc.gridy = 3;
+        formPanel.add(new JLabel("Phone:"), gbc);
 
         gbc.gridx = 1;
-        profilePanel.add(phoneField, gbc);
+        gbc.gridy = 3;
+        formPanel.add(phoneField, gbc);
 
         // Update button
         gbc.gridx = 1;
-        gbc.gridy = 3;
+        gbc.gridy = 4;
         gbc.anchor = GridBagConstraints.EAST;
-        profilePanel.add(updateProfileButton, gbc);
+        formPanel.add(updateProfileButton, gbc);
+
+        profilePanel.add(formPanel, BorderLayout.NORTH);
 
         // Password panel
         JPanel passwordPanel = new JPanel(new GridBagLayout());
@@ -136,6 +178,7 @@ public class UserProfileView extends JFrame {
         passwordPanel.add(new JLabel("Current Password:"), gbc);
 
         gbc.gridx = 1;
+        gbc.gridy = 0;
         passwordPanel.add(currentPasswordField, gbc);
 
         // New password field
@@ -144,6 +187,7 @@ public class UserProfileView extends JFrame {
         passwordPanel.add(new JLabel("New Password:"), gbc);
 
         gbc.gridx = 1;
+        gbc.gridy = 1;
         passwordPanel.add(newPasswordField, gbc);
 
         // Confirm password field
@@ -152,6 +196,7 @@ public class UserProfileView extends JFrame {
         passwordPanel.add(new JLabel("Confirm Password:"), gbc);
 
         gbc.gridx = 1;
+        gbc.gridy = 2;
         passwordPanel.add(confirmPasswordField, gbc);
 
         // Change password button
@@ -166,65 +211,96 @@ public class UserProfileView extends JFrame {
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
-        // Amount field
+        // Current balance display
         gbc.gridx = 0;
         gbc.gridy = 0;
-        balancePanel.add(new JLabel("Amount:"), gbc);
+        balancePanel.add(new JLabel("Current Balance:"), gbc);
 
         gbc.gridx = 1;
+        gbc.gridy = 0;
+        balancePanel.add(balanceLabel, gbc);
+
+        // Amount field for adding funds
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        balancePanel.add(new JLabel("Add Amount:"), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridy = 1;
         balancePanel.add(amountField, gbc);
 
         // Add funds button
         gbc.gridx = 1;
-        gbc.gridy = 1;
+        gbc.gridy = 2;
         gbc.anchor = GridBagConstraints.EAST;
         balancePanel.add(addFundsButton, gbc);
 
-        // Add panels to tabbed pane
+        // Add the panels to the tabbed pane
         tabbedPane.addTab("Profile Information", profilePanel);
         tabbedPane.addTab("Change Password", passwordPanel);
-        tabbedPane.addTab("Add Funds", balancePanel);
+        tabbedPane.addTab("Account Balance", balancePanel);
 
         add(tabbedPane, BorderLayout.CENTER);
 
-        // Back button at the bottom
+        // Add back button at the bottom
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.add(backButton);
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    private void updateProfile() {
-        String name = nameField.getText();
-        String email = emailField.getText();
-        String phone = phoneField.getText();
-
-        if (name.isEmpty() || email.isEmpty() || phone.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Please fill in all fields.",
-                    "Update Error",
-                    JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
+    private void loadUserData() {
         try {
-            Map<String, Object> result = userProfileController.updateUserProfile(
-                    currentUser.getUserID(), name, phone, email);
+            // Refresh user data from the database
+            User refreshedUser = userService.getUserById(currentUser.getUserID());
+            if (refreshedUser != null) {
+                currentUser = refreshedUser;
+            }
 
-            boolean success = (boolean) result.get("success");
+            // Set field values
+            nameField.setText(currentUser.getUserName());
+            emailField.setText(currentUser.getEmail());
+            phoneField.setText(currentUser.getPhone());
+            balanceLabel.setText(String.format("%,.0f VND", currentUser.getBalance()));
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error loading user data: " + ex.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void updateProfile() {
+        try {
+            String name = nameField.getText();
+            String email = emailField.getText();
+            String phone = phoneField.getText();
+
+            // Validate input
+            if (name.isEmpty() || email.isEmpty() || phone.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Please fill in all fields.",
+                        "Update Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Update user data
+            currentUser.setUserName(name);
+            currentUser.setEmail(email);
+            currentUser.setPhone(phone);
+
+            // Save to database
+            boolean success = userService.updateUser(currentUser);
+
             if (success) {
-                // Update the current user object
-                currentUser.setUserName(name);
-                currentUser.setEmail(email);
-                currentUser.setPhone(phone);
-
                 JOptionPane.showMessageDialog(this,
                         "Profile updated successfully.",
                         "Update Successful",
                         JOptionPane.INFORMATION_MESSAGE);
             } else {
                 JOptionPane.showMessageDialog(this,
-                        result.get("message").toString(),
-                        "Update Failed",
+                        "Failed to update profile. Email or phone may already be in use.",
+                        "Update Error",
                         JOptionPane.ERROR_MESSAGE);
             }
         } catch (Exception ex) {
@@ -236,35 +312,47 @@ public class UserProfileView extends JFrame {
     }
 
     private void changePassword() {
-        String currentPassword = new String(currentPasswordField.getPassword());
-        String newPassword = new String(newPasswordField.getPassword());
-        String confirmPassword = new String(confirmPasswordField.getPassword());
-
-        if (currentPassword.isEmpty() || newPassword.isEmpty() || confirmPassword.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Please fill in all password fields.",
-                    "Password Error",
-                    JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        if (!newPassword.equals(confirmPassword)) {
-            JOptionPane.showMessageDialog(this,
-                    "New passwords do not match.",
-                    "Password Error",
-                    JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
         try {
-            Map<String, Object> result = userProfileController.changePassword(
-                    currentUser.getUserID(), currentPassword, newPassword);
+            String currentPassword = new String(currentPasswordField.getPassword());
+            String newPassword = new String(newPasswordField.getPassword());
+            String confirmPassword = new String(confirmPasswordField.getPassword());
 
-            boolean success = (boolean) result.get("success");
+            // Validate input
+            if (currentPassword.isEmpty() || newPassword.isEmpty() || confirmPassword.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Please fill in all password fields.",
+                        "Password Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!newPassword.equals(confirmPassword)) {
+                JOptionPane.showMessageDialog(this,
+                        "New password and confirmation do not match.",
+                        "Password Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Verify current password
+            if (!currentPassword.equals(currentUser.getPassword())) {
+                JOptionPane.showMessageDialog(this,
+                        "Current password is incorrect.",
+                        "Password Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Update password
+            currentUser.setPassword(newPassword);
+
+            // Save to database
+            boolean success = userService.updateUser(currentUser);
+
             if (success) {
                 JOptionPane.showMessageDialog(this,
                         "Password changed successfully.",
-                        "Password Changed",
+                        "Password Change Successful",
                         JOptionPane.INFORMATION_MESSAGE);
 
                 // Clear password fields
@@ -273,8 +361,8 @@ public class UserProfileView extends JFrame {
                 confirmPasswordField.setText("");
             } else {
                 JOptionPane.showMessageDialog(this,
-                        result.get("message").toString(),
-                        "Password Change Failed",
+                        "Failed to change password.",
+                        "Password Error",
                         JOptionPane.ERROR_MESSAGE);
             }
         } catch (Exception ex) {
@@ -286,46 +374,50 @@ public class UserProfileView extends JFrame {
     }
 
     private void addFunds() {
-        String amountText = amountField.getText();
-
-        if (amountText.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Please enter an amount to add.",
-                    "Input Error",
-                    JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        double amount;
         try {
-            amount = Double.parseDouble(amountText);
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Please enter a valid number.",
-                    "Input Error",
-                    JOptionPane.ERROR_MESSAGE);
-            return;
-        }
+            String amountText = amountField.getText();
 
-        if (amount <= 0) {
-            JOptionPane.showMessageDialog(this,
-                    "Amount must be greater than zero.",
-                    "Input Error",
-                    JOptionPane.ERROR_MESSAGE);
-            return;
-        }
+            // Validate input
+            if (amountText.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Please enter an amount to add.",
+                        "Input Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
-        try {
-            // Update the user's balance
-            currentUser.setBalance(currentUser.getBalance() + amount);
+            float amount;
+            try {
+                amount = (float) Float.parseFloat(amountText);
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "Please enter a valid number.",
+                        "Input Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
-            // Reflect the updated balance in the database
-            boolean success = userProfileController.updateUserBalance(currentUser.getUserID(),
-                    currentUser.getBalance());
+            if (amount <= 0) {
+                JOptionPane.showMessageDialog(this,
+                        "Amount must be greater than zero.",
+                        "Input Error",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Add funds to the user's account
+            float newBalance = currentUser.getBalance() + amount;
+            currentUser.setBalance(newBalance);
+
+            // Save to database
+            boolean success = userService.updateUser(currentUser);
 
             if (success) {
+                // Update the balance label
+                balanceLabel.setText(String.format("%,.0f VND", newBalance));
+
                 JOptionPane.showMessageDialog(this,
-                        "Funds added successfully. New balance: $" + String.format("%.2f", currentUser.getBalance()),
+                        "Funds added successfully. New balance: " + String.format("%,.0f VND", newBalance),
                         "Funds Added",
                         JOptionPane.INFORMATION_MESSAGE);
 
@@ -333,7 +425,7 @@ public class UserProfileView extends JFrame {
                 amountField.setText("");
             } else {
                 JOptionPane.showMessageDialog(this,
-                        "Failed to update balance in the database.",
+                        "Failed to add funds.",
                         "Error",
                         JOptionPane.ERROR_MESSAGE);
             }
@@ -353,7 +445,7 @@ public class UserProfileView extends JFrame {
         mockUser.setUserName("Test User");
         mockUser.setEmail("test@example.com");
         mockUser.setPhone("123-456-7890");
-        mockUser.setBalance(100.0);
+        mockUser.setBalance(100.0F);
 
         SwingUtilities.invokeLater(() -> {
             new UserProfileView(mockUser);

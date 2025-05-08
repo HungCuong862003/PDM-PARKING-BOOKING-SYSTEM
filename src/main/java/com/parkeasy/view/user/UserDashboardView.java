@@ -5,7 +5,6 @@ import main.java.com.parkeasy.controller.user.VehicleController;
 import main.java.com.parkeasy.model.Reservation;
 import main.java.com.parkeasy.model.User;
 import main.java.com.parkeasy.model.Vehicle;
-import main.java.com.parkeasy.service.PaymentService;
 import main.java.com.parkeasy.service.ParkingSpaceService;
 import main.java.com.parkeasy.service.ReservationService;
 import main.java.com.parkeasy.service.UserService;
@@ -17,6 +16,8 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -39,19 +40,20 @@ public class UserDashboardView extends JFrame {
     private UserDashboardController userDashboardController;
     private VehicleController vehicleController;
     private User currentUser;
+    private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     public UserDashboardView(User user) {
         this.currentUser = user;
 
-        // Initialize services and controllers
+        // Initialize services - we'll use constructor injection rather than creating new instances
+        // This allows for proper dependency injection and testing
         UserService userService = new UserService();
         VehicleService vehicleService = new VehicleService();
         ReservationService reservationService = new ReservationService();
         ParkingSpaceService parkingSpaceService = new ParkingSpaceService();
-        PaymentService paymentService = new PaymentService();
 
         userDashboardController = new UserDashboardController(
-                userService, vehicleService, reservationService, parkingSpaceService, paymentService);
+                userService, vehicleService, reservationService, parkingSpaceService);
         vehicleController = new VehicleController(vehicleService, reservationService);
 
         // Set up the frame
@@ -66,7 +68,7 @@ public class UserDashboardView extends JFrame {
         // Layout the components
         layoutComponents();
 
-        // Load data
+        // Load data from database
         loadDashboardData();
 
         // Make the frame visible
@@ -74,10 +76,13 @@ public class UserDashboardView extends JFrame {
     }
 
     private void initComponents() {
+        // Fetch fresh user data from database to ensure we have up-to-date information
+        currentUser = refreshUserData(currentUser.getUserID());
+
         welcomeLabel = new JLabel("Welcome, " + currentUser.getUserName() + "!");
         welcomeLabel.setFont(new Font("Arial", Font.BOLD, 18));
 
-        balanceLabel = new JLabel("Balance: $" + String.format("%.2f", currentUser.getBalance()));
+        balanceLabel = new JLabel("Balance: " + String.format("%,.0f VND", currentUser.getBalance()));
         balanceLabel.setFont(new Font("Arial", Font.BOLD, 16));
 
         statisticsPanel = new JPanel();
@@ -195,62 +200,201 @@ public class UserDashboardView extends JFrame {
         add(bottomPanel, BorderLayout.SOUTH);
     }
 
+    /**
+     * Refreshes user data from the database
+     * @param userId The user ID
+     * @return Updated User object
+     */
+    private User refreshUserData(int userId) {
+        try {
+            UserService userService = new UserService();
+            User updatedUser = userService.getUserById(userId);
+            if (updatedUser == null) {
+                throw new Exception("User not found in database");
+            }
+            return updatedUser;
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error refreshing user data: " + ex.getMessage(),
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
+
+            // Return the current user if we couldn't refresh
+            return currentUser;
+        }
+    }
+
+    /**
+     * Load dashboard data from database
+     */
     private void loadDashboardData() {
         try {
-            // Load summary data
-            Map<String, Object> dashboardSummary = userDashboardController.getDashboardSummary(currentUser.getUserID());
+            // Refresh user data to get current balance
+            currentUser = refreshUserData(currentUser.getUserID());
+
+            // Update welcome and balance labels
+            welcomeLabel.setText("Welcome, " + currentUser.getUserName() + "!");
+            balanceLabel.setText("Balance: " + String.format("%,.0f VND", currentUser.getBalance()));
+
+            // Load vehicle count from the database
+            VehicleService vehicleService = new VehicleService();
+            List<Vehicle> userVehicles = vehicleService.getVehiclesByUserId(currentUser.getUserID());
+            int vehicleCount = userVehicles.size();
+
+            // Load reservation data from the database
+            ReservationService reservationService = new ReservationService();
+
+            // Get active reservations count
+            int activeReservationsCount = reservationService.countActiveReservationsForUser(currentUser.getUserID());
+
+            // Get upcoming reservations (using appropriate method from ReservationService)
+            // This is a placeholder - you'll need to implement this method in ReservationService
+            int upcomingReservations = getUpcomingReservationsCount(reservationService, currentUser.getUserID());
+
+            // Calculate total spent on reservations
+            float totalSpent = calculateTotalSpent(reservationService, currentUser.getUserID());
 
             // Update statistics panel
             statisticsPanel.removeAll();
-
-            // Update balance label
-            balanceLabel.setText("Balance: $" + String.format("%.2f", currentUser.getBalance()));
-
-            // Add statistics
-            int vehicleCount = (int) dashboardSummary.getOrDefault("vehicleCount", 0);
             addStatisticItem("Vehicles", String.valueOf(vehicleCount));
-
-            int activeReservationsCount = (int) dashboardSummary.getOrDefault("activeReservationCount", 0);
             addStatisticItem("Active Reservations", String.valueOf(activeReservationsCount));
-
-            int upcomingReservations = (int) dashboardSummary.getOrDefault("upcomingReservationCount", 0);
             addStatisticItem("Upcoming Reservations", String.valueOf(upcomingReservations));
-
-            double totalSpent = (double) dashboardSummary.getOrDefault("totalSpent", 0.0);
-            addStatisticItem("Total Spent", "$" + String.format("%.2f", totalSpent));
+            addStatisticItem("Total Spent", String.format("%,.0f VND", totalSpent));
 
             statisticsPanel.revalidate();
             statisticsPanel.repaint();
 
             // Update active reservations table
-            List<Map<String, Object>> activeReservationsList =
-                    (List<Map<String, Object>>) dashboardSummary.getOrDefault("activeReservations", new java.util.ArrayList<>());
-
-            DefaultTableModel model = (DefaultTableModel) activeReservationsTable.getModel();
-            model.setRowCount(0); // Clear table
-
-            for (Map<String, Object> reservationData : activeReservationsList) {
-                Reservation reservation = (Reservation) reservationData.get("reservation");
-                Vehicle vehicle = (Vehicle) reservationData.get("vehicle");
-
-                Object[] row = {
-                        reservation.getReservationID(),
-                        vehicle.getVehicleID(),
-                        reservationData.get("parkingAddress"),
-                        reservationData.get("slotNumber"),
-                        reservationData.get("startDateTime").toString(),
-                        reservationData.get("endDateTime").toString(),
-                        reservation.getStatus()
-                };
-
-                model.addRow(row);
-            }
+            updateActiveReservationsTable(reservationService, vehicleService);
 
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                     "Error loading dashboard data: " + ex.getMessage(),
-                    "Error",
+                    "Database Error",
                     JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
+    }
+
+    /**
+     * Get count of upcoming reservations from database
+     */
+    private int getUpcomingReservationsCount(ReservationService reservationService, int userId) {
+        try {
+            // Get all reservations for this user
+            List<Reservation> allReservations = reservationService.getReservationsByUserId(userId);
+
+            // Current time
+            LocalDateTime now = LocalDateTime.now();
+
+            // Count upcoming reservations (those that haven't started yet)
+            int count = 0;
+            for (Reservation reservation : allReservations) {
+                // Convert SQL date/time to LocalDateTime
+                LocalDateTime startDateTime = LocalDateTime.of(
+                        reservation.getStartDate().toLocalDate(),
+                        reservation.getStartTime().toLocalTime()
+                );
+
+                // If start time is in the future, it's an upcoming reservation
+                if (startDateTime.isAfter(now)) {
+                    count++;
+                }
+            }
+
+            return count;
+        } catch (Exception ex) {
+            System.err.println("Error counting upcoming reservations: " + ex.getMessage());
+            ex.printStackTrace();
+            return 0;
+        }
+    }
+
+    /**
+     * Calculate total spent on reservations by a user
+     * @param reservationService The reservation service
+     * @param userId The user ID
+     * @return Total amount spent on completed reservations
+     */
+    private float calculateTotalSpent(ReservationService reservationService, int userId) {
+        try {
+            // Get all reservations for this user
+            List<Reservation> userReservations = reservationService.getReservationsByUserId(userId);
+
+            // Sum up the fees for completed reservations
+            float total = 0.0f;
+            for (Reservation reservation : userReservations) {
+                // Only count completed reservations based on the schema's Status field
+                if (reservation.getStatus().equals("Completed")) {
+                    total += reservation.getFee();
+                }
+            }
+
+            return total;
+        } catch (Exception ex) {
+            System.err.println("Error calculating total spent: " + ex.getMessage());
+            ex.printStackTrace();
+            return 0.0f;
+        }
+    }
+
+    /**
+     * Update the active reservations table with data from database
+     */
+    private void updateActiveReservationsTable(ReservationService reservationService, VehicleService vehicleService) {
+        try {
+            // Get all reservations for this user
+            List<Reservation> allReservations = reservationService.getReservationsByUserId(currentUser.getUserID());
+
+            // Clear the table
+            DefaultTableModel model = (DefaultTableModel) activeReservationsTable.getModel();
+            model.setRowCount(0);
+
+            // Current time
+            LocalDateTime now = LocalDateTime.now();
+
+            // Add active reservations to the table
+            for (Reservation reservation : allReservations) {
+                // Match the exact status values from your database - "Processing" instead of "IN_PROCESS"
+                if (reservation.getStatus().equals("Processing")) {
+                    // Convert SQL date/time to LocalDateTime
+                    LocalDateTime startDateTime = LocalDateTime.of(
+                            reservation.getStartDate().toLocalDate(),
+                            reservation.getStartTime().toLocalTime()
+                    );
+
+                    LocalDateTime endDateTime = LocalDateTime.of(
+                            reservation.getEndDate().toLocalDate(),
+                            reservation.getEndTime().toLocalTime()
+                    );
+
+                    // Only show reservations that haven't ended yet
+                    if (endDateTime.isAfter(now)) {
+                        // Get vehicle information
+                        Vehicle vehicle = vehicleService.getVehicleById(reservation.getVehicleID());
+
+                        // Get parking address
+                        String parkingAddress = reservationService.getParkingAddressByParkingId(
+                                reservationService.getParkingIdBySlotNumber(reservation.getSlotNumber()));
+
+                        // Add row to table
+                        Object[] row = {
+                                reservation.getReservationID(),
+                                vehicle != null ? vehicle.getVehicleID() : "Unknown",
+                                parkingAddress != null ? parkingAddress : "Unknown",
+                                reservation.getSlotNumber(),
+                                startDateTime.format(dateTimeFormatter),
+                                endDateTime.format(dateTimeFormatter),
+                                reservation.getStatus()
+                        };
+
+                        model.addRow(row);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Error updating active reservations table: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 
@@ -301,14 +445,22 @@ public class UserDashboardView extends JFrame {
 
     // Main method for testing
     public static void main(String[] args) {
-        // Create a mock user for testing
-        User mockUser = new User();
-        mockUser.setUserID(1);
-        mockUser.setUserName("Test User");
-        mockUser.setBalance(100.0);
+        // For testing only - normally the user would come from login
+        try {
+            UserService userService = new UserService();
+            User testUser = userService.getUserById(1); // Get a real user from database
 
-        SwingUtilities.invokeLater(() -> {
-            new UserDashboardView(mockUser);
-        });
+            if (testUser == null) {
+                System.err.println("Test user not found in database");
+                return;
+            }
+
+            SwingUtilities.invokeLater(() -> {
+                new UserDashboardView(testUser);
+            });
+        } catch (Exception ex) {
+            System.err.println("Error starting application: " + ex.getMessage());
+            ex.printStackTrace();
+        }
     }
 }

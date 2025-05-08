@@ -18,8 +18,8 @@ import java.util.logging.Logger;
 
 public class ParkingSlotRepository {
     private static final Logger LOGGER = Logger.getLogger(ParkingSlotRepository.class.getName());
-    private String sql;
-    private Connection connection;
+    private static String sql;
+    private static Connection connection;
 
     public boolean addParkingSlot(ParkingSlot slot) {
         connection = DatabaseConnection.getConnection();
@@ -288,7 +288,6 @@ public class ParkingSlotRepository {
                         resultSet.getString("ParkingAddress"),
                         resultSet.getFloat("CostOfParking"),
                         resultSet.getInt("NumberOfSlots"),
-                        resultSet.getInt("MaxDuration"),
                         resultSet.getString("Description"),
                         resultSet.getInt("AdminID")
                 );
@@ -300,52 +299,6 @@ public class ParkingSlotRepository {
         }
         return null;
     }
-
-    /**
-     * Get active reservations for a specific slot
-     *
-     * @param slotNumber The slot number
-     * @return List of active reservations as maps
-     */
-    public List<Map<String, Object>> getActiveReservationsForSlot(String slotNumber) {
-        List<Map<String, Object>> reservations = new ArrayList<>();
-        connection = DatabaseConnection.getConnection();
-        sql = "SELECT r.* FROM PARKING_RESERVATION r " +
-                "WHERE r.SlotNumber = ? AND r.Status IN ('Processing', 'In Use') " +
-                "AND ((r.EndDate > CURRENT_DATE) OR (r.EndDate = CURRENT_DATE AND r.EndTime > CURRENT_TIME))";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setString(1, slotNumber);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                Map<String, Object> reservation = new HashMap<>();
-
-                // Convert SQL dates and times to LocalDateTime
-                LocalDateTime startDateTime = LocalDateTime.of(
-                        resultSet.getDate("StartDate").toLocalDate(),
-                        resultSet.getTime("StartTime").toLocalTime()
-                );
-
-                LocalDateTime endDateTime = LocalDateTime.of(
-                        resultSet.getDate("EndDate").toLocalDate(),
-                        resultSet.getTime("EndTime").toLocalTime()
-                );
-
-                reservation.put("reservationId", resultSet.getInt("ReservationID"));
-                reservation.put("startDateTime", startDateTime);
-                reservation.put("endDateTime", endDateTime);
-                reservation.put("status", resultSet.getString("Status"));
-                reservation.put("vehicleId", resultSet.getString("VehicleID"));
-
-                reservations.add(reservation);
-            }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error getting active reservations for slot", e);
-        } finally {
-            DatabaseConnection.closeConnection(connection);
-        }
-        return reservations;
-    }
-
     /**
      * Update availability of a parking slot
      *
@@ -448,5 +401,49 @@ public class ParkingSlotRepository {
      */
     public List<ParkingSlot> getParkingSlotsByParkingSpaceId(String parkingSpaceId) {
         return getParkingSlotsByParkingId(parkingSpaceId);
+    }
+    /**
+     * Get active reservations for a specific slot
+     *
+     * @param slotNumber The slot number
+     * @return List of active reservations as maps
+     */
+    public static List<Map<String, Object>> getActiveReservationsForSlot(String slotNumber) {
+        List<Map<String, Object>> reservations = new ArrayList<>();
+        connection = DatabaseConnection.getConnection();
+        sql = "SELECT r.* FROM PARKING_RESERVATION r " +
+                "WHERE r.SlotNumber = ? AND r.Status IN ('Processing', 'In Use') " +
+                "AND ((r.EndDate > CURRENT_DATE) OR (r.EndDate = CURRENT_DATE AND r.EndTime > CURRENT_TIME))";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, slotNumber);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                Map<String, Object> reservation = new HashMap<>();
+
+                // Convert SQL dates and times to LocalDateTime
+                LocalDateTime startDateTime = LocalDateTime.of(
+                        resultSet.getDate("StartDate").toLocalDate(),
+                        resultSet.getTime("StartTime").toLocalTime()
+                );
+
+                LocalDateTime endDateTime = LocalDateTime.of(
+                        resultSet.getDate("EndDate").toLocalDate(),
+                        resultSet.getTime("EndTime").toLocalTime()
+                );
+
+                reservation.put("reservationId", resultSet.getInt("ReservationID"));
+                reservation.put("startDateTime", startDateTime);
+                reservation.put("endDateTime", endDateTime);
+                reservation.put("status", resultSet.getString("Status"));
+                reservation.put("vehicleId", resultSet.getString("VehicleID"));
+
+                reservations.add(reservation);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting active reservations for slot", e);
+        } finally {
+            DatabaseConnection.closeConnection(connection);
+        }
+        return reservations;
     }
 }

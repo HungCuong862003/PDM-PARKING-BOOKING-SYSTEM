@@ -235,7 +235,7 @@ public class ParkingReviewRepository {
      * @param parkingId The ID of the parking space
      * @return The average rating or 0 if no reviews
      */
-    public double getAverageRatingForParkingSpace(String parkingId) {
+    public float getAverageRatingForParkingSpace(String parkingId) {
         connection = DatabaseConnection.getConnection();
         sql = "SELECT AVG(Rating) AS average_rating FROM PARKING_REVIEW WHERE ParkingID = ?";
 
@@ -244,13 +244,13 @@ public class ParkingReviewRepository {
 
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
-                double averageRating = resultSet.getDouble("average_rating");
-                return resultSet.wasNull() ? 0.0 : averageRating;
+                float averageRating = resultSet.getFloat("average_rating");
+                return resultSet.wasNull() ? (float) 0.0 : averageRating;
             }
-            return 0.0;
+            return 0.0F;
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error calculating average rating for parking space: " + parkingId, e);
-            return 0.0;
+            return 0.0F;
         } finally {
             DatabaseConnection.closeConnection(connection);
         }

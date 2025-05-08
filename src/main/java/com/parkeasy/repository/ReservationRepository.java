@@ -1,6 +1,7 @@
 package main.java.com.parkeasy.repository;
 
 import main.java.com.parkeasy.model.Reservation;
+import main.java.com.parkeasy.util.Constants;
 import main.java.com.parkeasy.util.DatabaseConnection;
 
 import java.sql.*;
@@ -22,7 +23,9 @@ public class ReservationRepository {
      * @return ID of the inserted reservation or 0 if failed
      */
     public int insertReservation(Reservation reservation) {
-        String sql = "INSERT INTO " + TABLE_NAME + " (ReservationID, StartDate, EndDate, StartTime, EndTime, CreatedAt, Status, VehicleID, SlotNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO " + TABLE_NAME +
+                " (ReservationID, StartDate, EndDate, StartTime, EndTime, CreatedAt, Status, Fee, VehicleID, SlotNumber) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             preparedStatement.setInt(1, reservation.getReservationID());
@@ -32,8 +35,9 @@ public class ReservationRepository {
             preparedStatement.setTime(5, reservation.getEndTime());
             preparedStatement.setTimestamp(6, reservation.getCreatedAt());
             preparedStatement.setString(7, reservation.getStatus());
-            preparedStatement.setString(8, reservation.getVehicleID());
-            preparedStatement.setString(9, reservation.getSlotNumber());
+            preparedStatement.setFloat(8, reservation.getFee()); // Add Fee parameter
+            preparedStatement.setString(9, reservation.getVehicleID());
+            preparedStatement.setString(10, reservation.getSlotNumber());
 
             int rowsAffected = preparedStatement.executeUpdate();
             if (rowsAffected > 0) {
@@ -142,7 +146,9 @@ public class ReservationRepository {
      * @return true if successful, false otherwise
      */
     public boolean updateReservationById(int reservationID, Reservation reservation) {
-        String sql = "UPDATE " + TABLE_NAME + " SET StartDate = ?, EndDate = ?, StartTime = ?, EndTime = ?, CreatedAt = ?, Status = ?, VehicleID = ?, SlotNumber = ? WHERE ReservationID = ?";
+        String sql = "UPDATE " + TABLE_NAME +
+                " SET StartDate = ?, EndDate = ?, StartTime = ?, EndTime = ?, CreatedAt = ?, " +
+                "Status = ?, Fee = ?, VehicleID = ?, SlotNumber = ? WHERE ReservationID = ?";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setDate(1, reservation.getStartDate());
@@ -151,9 +157,10 @@ public class ReservationRepository {
             preparedStatement.setTime(4, reservation.getEndTime());
             preparedStatement.setTimestamp(5, reservation.getCreatedAt());
             preparedStatement.setString(6, reservation.getStatus());
-            preparedStatement.setString(7, reservation.getVehicleID());
-            preparedStatement.setString(8, reservation.getSlotNumber());
-            preparedStatement.setInt(9, reservationID);
+            preparedStatement.setFloat(7, reservation.getFee()); // Add Fee parameter
+            preparedStatement.setString(8, reservation.getVehicleID());
+            preparedStatement.setString(9, reservation.getSlotNumber());
+            preparedStatement.setInt(10, reservationID);
             int rowsAffected = preparedStatement.executeUpdate();
             return rowsAffected > 0;
         } catch (SQLException e) {
@@ -172,8 +179,8 @@ public class ReservationRepository {
     public String getMostPopularParkingSpace(LocalDateTime startDate, LocalDateTime endDate) {
         String sql = "SELECT ps.ParkingAddress, COUNT(r.ReservationID) as ReservationCount " +
                 "FROM " + TABLE_NAME + " r " +
-                "JOIN parkingslot s ON r.SlotNumber = s.SlotNumber " +
-                "JOIN parkingspace ps ON s.ParkingID = ps.ParkingID " +
+                "JOIN PARKING_SLOT s ON r.SlotNumber = s.SlotNumber " +
+                "JOIN PARKING_SPACE ps ON s.ParkingID = ps.ParkingID " +
                 "WHERE r.CreatedAt BETWEEN ? AND ? " +
                 "GROUP BY ps.ParkingID " +
                 "ORDER BY ReservationCount DESC " +
@@ -207,8 +214,8 @@ public class ReservationRepository {
     public String getMostPopularParkingSpaceByAdminId(int adminId, LocalDateTime startDate, LocalDateTime endDate) {
         String sql = "SELECT ps.ParkingAddress, COUNT(r.ReservationID) as ReservationCount " +
                 "FROM " + TABLE_NAME + " r " +
-                "JOIN parkingslot s ON r.SlotNumber = s.SlotNumber " +
-                "JOIN parkingspace ps ON s.ParkingID = ps.ParkingID " +
+                "JOIN PARKING_SLOT s ON r.SlotNumber = s.SlotNumber " +
+                "JOIN PARKING_SPACE ps ON s.ParkingID = ps.ParkingID " +
                 "WHERE r.CreatedAt BETWEEN ? AND ? " +
                 "AND ps.AdminID = ? " +
                 "GROUP BY ps.ParkingID " +
@@ -257,7 +264,7 @@ public class ReservationRepository {
         }
 
         String sql = "SELECT r.* FROM " + TABLE_NAME + " r " +
-                "JOIN parkingslot s ON r.SlotNumber = s.SlotNumber " +
+                "JOIN PARKING_SLOT s ON r.SlotNumber = s.SlotNumber " +
                 "WHERE s.ParkingID IN (" + placeholders.toString() + ") " +
                 "ORDER BY r.CreatedAt DESC " +
                 "LIMIT ?";
@@ -321,7 +328,7 @@ public class ReservationRepository {
     public List<Reservation> getReservationsByParkingIdAndDateRange(String parkingId, Date startDate, Date endDate) {
         List<Reservation> reservations = new ArrayList<>();
         String sql = "SELECT r.* FROM " + TABLE_NAME + " r " +
-                "JOIN parkingslot ps ON r.SlotNumber = ps.SlotNumber " +
+                "JOIN PARKING_SLOT ps ON r.SlotNumber = ps.SlotNumber " +
                 "WHERE ps.ParkingID = ? " +
                 "AND ((r.StartDate BETWEEN ? AND ?) OR (r.EndDate BETWEEN ? AND ?))";
 
@@ -403,7 +410,7 @@ public class ReservationRepository {
     public int getActiveReservationCountByUserId(int userId) {
         String sql = "SELECT COUNT(*) FROM " + TABLE_NAME + " r " +
                 "JOIN vehicle v ON r.VehicleID = v.VehicleID " +
-                "WHERE v.UserID = ? AND r.Status IN ('CONFIRMED', 'ACTIVE', 'PENDING')";
+                "WHERE v.UserID = ? AND r.Status IN (?, ?)";
 
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -413,6 +420,10 @@ public class ReservationRepository {
             connection = DatabaseConnection.getConnection();
             preparedStatement = connection.prepareStatement(sql);
             preparedStatement.setInt(1, userId);
+
+            // Use the same constants as in ReservationService
+            preparedStatement.setString(2, Constants.RESERVATION_IN_PROCESS);
+            preparedStatement.setString(3, Constants.RESERVATION_PAID);
 
             resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
@@ -428,7 +439,26 @@ public class ReservationRepository {
 
         return 0;
     }
-
+    /**
+     * Get the admin ID associated with a parking space
+     *
+     * @param parkingId ID of the parking space
+     * @return The ID of the admin who owns the parking space, or 0 if not found
+     */
+    public int getAdminIdByParkingId(String parkingId) {
+        String sql = "SELECT AdminID FROM parkingspace WHERE ParkingID = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, parkingId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt("AdminID");
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting admin ID for parking ID: " + parkingId, e);
+        }
+        return 0; // Return 0 as an invalid/not found admin ID
+    }
 
     /**
      * Helper method to extract a Reservation object from a ResultSet
@@ -438,16 +468,19 @@ public class ReservationRepository {
      * @throws SQLException if a database error occurs
      */
     private Reservation extractReservationFromResultSet(ResultSet resultSet) throws SQLException {
-        return new Reservation(
-                resultSet.getInt("ReservationID"),
-                resultSet.getDate("StartDate"),
-                resultSet.getDate("EndDate"),
-                resultSet.getTime("StartTime"),
-                resultSet.getTime("EndTime"),
-                resultSet.getTimestamp("CreatedAt"),
-                resultSet.getString("Status"),
-                resultSet.getString("VehicleID"),
-                resultSet.getString("SlotNumber")
-        );
+        Reservation reservation = new Reservation();
+
+        reservation.setReservationID(resultSet.getInt("ReservationID"));
+        reservation.setStartDate(resultSet.getDate("StartDate"));
+        reservation.setEndDate(resultSet.getDate("EndDate"));
+        reservation.setStartTime(resultSet.getTime("StartTime"));
+        reservation.setEndTime(resultSet.getTime("EndTime"));
+        reservation.setCreatedAt(resultSet.getTimestamp("CreatedAt"));
+        reservation.setStatus(resultSet.getString("Status"));
+        reservation.setFee(resultSet.getFloat("Fee"));
+        reservation.setVehicleID(resultSet.getString("VehicleID"));
+        reservation.setSlotNumber(resultSet.getString("SlotNumber"));
+
+        return reservation;
     }
 }

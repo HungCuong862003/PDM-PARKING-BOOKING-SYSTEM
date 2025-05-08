@@ -270,7 +270,7 @@ public class UserService {
      * @param amount Amount to add
      * @return true if successful, false otherwise
      */
-    public boolean addFunds(int userId, double amount) {
+    public boolean addFunds(int userId, float amount) {
         try {
             if (amount <= 0) {
                 LOGGER.log(Level.WARNING, "Cannot add negative or zero amount: {0}", amount);
@@ -291,7 +291,7 @@ public class UserService {
      * @param amount Amount to deduct
      * @return true if successful, false otherwise
      */
-    public boolean deductFunds(int userId, double amount) {
+    public boolean deductFunds(int userId, float amount) {
         try {
             if (amount <= 0) {
                 LOGGER.log(Level.WARNING, "Cannot deduct negative or zero amount: {0}", amount);

@@ -123,7 +123,7 @@ public class CustomerManagementController {
             activity.put("reservationCount", reservations.size());
 
             // Calculate average reservation duration
-            double avgDuration = reservations.stream()
+            float avgDuration = (float) reservations.stream()
                     .mapToLong(r -> {
                         long startTime = r.getStartDate().getTime() + r.getStartTime().getTime();
                         long endTime = r.getEndDate().getTime() + r.getEndTime().getTime();
